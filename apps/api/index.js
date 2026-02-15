@@ -22,6 +22,7 @@ app.post("/rooms", (req, res) => {
   rooms[id] = {
     id,
     createdAt: Date.now(),
+    participants:[]
   };
 
   res.json({ roomId: id });
@@ -37,6 +38,20 @@ app.get("/rooms/:id", (req, res) => {
 
   res.json(room);
 });
+
+app.post("/rooms/:id/join",(req,res)=>{
+  const room =rooms[req.params.id];
+
+  if(!room){
+    return res.status(404).json({error:"room not found"});
+  }
+  const{name}=req.body;
+room.participants.push({name});
+
+res.json({success:true,participants:room.participants});
+})
+
+
 
 app.listen(4000, () => {
   console.log("API running on http://localhost:4000");
