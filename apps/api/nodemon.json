@@ -1,0 +1,5 @@
+{
+  "watch": ["index.js"],
+  "ext": "js",
+  "ignore": ["../web", "../packages", "../../node_modules"]
+}
