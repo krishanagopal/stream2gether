@@ -13,6 +13,8 @@ export default function RoomPage() {
   const [status, setStatus] = useState("enter-name");
   const [error, setError] = useState("");
   const [participants, setParticipants] = useState([]);
+  const [waitingUsers, setWaitingUsers] = useState([]);
+
 
   /* ---------------- HOST AUTO JOIN ---------------- */
   useEffect(() => {
@@ -76,6 +78,8 @@ export default function RoomPage() {
 
         const data = await res.json();
         setParticipants(data.approved || []);
+        setWaitingUsers(data.waiting || []);
+
       } catch {}
     }, 2000);
 
@@ -121,18 +125,28 @@ export default function RoomPage() {
   }
 
   return (
-    <main style={{ padding: 40 }}>
-      <h1>Room: {params.id}</h1>
+  <main style={{ padding: 40 }}>
+    <h1>Room: {params.id}</h1>
 
-      <h3>Participants:</h3>
-      <ul>
-        {participants.map((p, i) => (
-          <li key={i}>{p.name}</li>
-        ))}
-      </ul>
+    <h3>Participants:</h3>
+    <ul>
+      {participants.map((p, i) => (
+        <li key={i}>{p.name}</li>
+      ))}
+    </ul>
 
-      <p>Waiting room UI comes next</p>
-    </main>
-  );
+    {hostName && (
+      <>
+        <h3>Waiting Requests:</h3>
+        <ul>
+          {waitingUsers.map((u, i) => (
+            <li key={i}>{u.name}</li>
+          ))}
+        </ul>
+      </>
+    )}
+  </main>
+);
+
 }
 

@@ -78,6 +78,30 @@ app.post("/rooms/:id/join", (req, res) => {
   res.json({ status: "waiting" });
 });
 
+app.post("/rooms/:id/approve", (req, res) => {
+  const room = rooms[req.params.id];
+
+  if (!room) {
+    return res.status(404).json({ error: "Room not found" });
+  }
+
+  const { name } = req.body;
+
+  const index = room.waiting.findIndex(u => u.name === name);
+
+  if (index === -1) {
+    return res.status(400).json({ error: "User not in waiting list" });
+  }
+
+  // remove from waiting
+  const [user] = room.waiting.splice(index, 1);
+
+  // add to approved
+  room.approved.push(user);
+
+  res.json({ success: true });
+});
+
 
 
 
