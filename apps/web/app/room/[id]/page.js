@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { useParams, useSearchParams } from "next/navigation";
+import { io } from "socket.io-client";
+
 
 export default function RoomPage() {
   const params = useParams();
@@ -14,6 +16,7 @@ export default function RoomPage() {
   const [error, setError] = useState("");
   const [participants, setParticipants] = useState([]);
   const [waitingUsers, setWaitingUsers] = useState([]);
+  const [socket, setSocket] = useState(null);
 
 
   /* ---------------- HOST AUTO JOIN ---------------- */
@@ -80,6 +83,17 @@ export default function RoomPage() {
   } catch {}
 }
 
+
+
+useEffect(() => {
+  const s = io("http://localhost:4000");
+
+  setSocket(s);
+
+  return () => {
+    s.disconnect();
+  };
+}, []);
 
   /* ---------------- POLLING PARTICIPANTS ---------------- */
 useEffect(() => {

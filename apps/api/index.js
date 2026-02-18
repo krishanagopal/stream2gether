@@ -1,11 +1,31 @@
-
-
 const express = require("express");
-const cors = require("cors");
+const http = require("http");
+const { Server } = require("socket.io");
 
 const app = express();
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: "*",
+  },
+});
+
+
+
+const cors = require("cors");
+
+
 app.use(cors());
 app.use(express.json());
+
+io.on("connection", (socket) => {
+  console.log("User connected:", socket.id);
+
+  socket.on("disconnect", () => {
+    console.log("User disconnected:", socket.id);
+  });
+});
+
 
 /* In-memory storage */
 const rooms = {};
@@ -106,6 +126,7 @@ app.post("/rooms/:id/approve", (req, res) => {
 
 
 
-app.listen(4000, () => {
+server.listen(4000, () => {
   console.log("API running on http://localhost:4000");
 });
+
