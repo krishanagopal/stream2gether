@@ -67,24 +67,48 @@ export default function RoomPage() {
     }
   }
 
+
+  async function approveUser(name) {
+  try {
+    await fetch(`http://localhost:4000/rooms/${params.id}/approve`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ name }),
+    });
+  } catch {}
+}
+
+
   /* ---------------- POLLING PARTICIPANTS ---------------- */
-  useEffect(() => {
-    if (status !== "joined") return;
+useEffect(() => {
+  if (status !== "joined" && status !== "waiting") return;
 
-    const interval = setInterval(async () => {
-      try {
-        const res = await fetch(`http://localhost:4000/rooms/${params.id}`);
-        if (!res.ok) return;
+  const interval = setInterval(async () => {
+    try {
+      const res = await fetch(`http://localhost:4000/rooms/${params.id}`);
+      if (!res.ok) return;
 
-        const data = await res.json();
-        setParticipants(data.approved || []);
-        setWaitingUsers(data.waiting || []);
+      const data = await res.json();
 
-      } catch {}
-    }, 2000);
+      // host or approved users
+      setParticipants(data.approved || []);
+      setWaitingUsers(data.waiting || []);
 
-    return () => clearInterval(interval);
-  }, [status, params.id]);
+      // if I was waiting and now approved → enter room
+      const isApproved = data.approved?.find(p => p.name === name);
+
+      if (status === "waiting" && isApproved) {
+        setStatus("joined");
+      }
+
+    } catch {}
+  }, 2000);
+
+  return () => clearInterval(interval);
+}, [status, params.id, name]);
+
 
   /* ---------------- UI STATES ---------------- */
 
@@ -139,10 +163,16 @@ export default function RoomPage() {
       <>
         <h3>Waiting Requests:</h3>
         <ul>
-          {waitingUsers.map((u, i) => (
-            <li key={i}>{u.name}</li>
-          ))}
-        </ul>
+  {waitingUsers.map((u, i) => (
+    <li key={i}>
+      {u.name}{" "}
+      <button onClick={() => approveUser(u.name)}>
+        Approve
+      </button>
+    </li>
+  ))}
+</ul>
+
       </>
     )}
   </main>
