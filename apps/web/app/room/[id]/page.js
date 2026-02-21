@@ -20,6 +20,28 @@ export default function RoomPage() {
 
 
   /* ---------------- HOST AUTO JOIN ---------------- */
+useEffect(() => {
+  if (!socket) return;
+
+  // guest approved → enter instantly
+  socket.on("user-approved", (approvedName) => {
+    if (approvedName === name) {
+      setStatus("joined");
+    }
+  });
+
+  // someone waiting → update host UI immediately
+  socket.on("user-waiting", (waitingName) => {
+    setWaitingUsers(prev => [...prev, { name: waitingName }]);
+  });
+
+  return () => {
+    socket.off("user-approved");
+    socket.off("user-waiting");
+  };
+}, [socket, name]);
+
+
   useEffect(() => {
     if (!hostName) return;
 
@@ -88,12 +110,14 @@ export default function RoomPage() {
 useEffect(() => {
   const s = io("http://localhost:4000");
 
+  s.emit("join-room", params.id);
+
   setSocket(s);
 
   return () => {
     s.disconnect();
   };
-}, []);
+}, [params.id]);
 
   /* ---------------- POLLING PARTICIPANTS ---------------- */
 useEffect(() => {

@@ -21,6 +21,11 @@ app.use(express.json());
 io.on("connection", (socket) => {
   console.log("User connected:", socket.id);
 
+  socket.on("join-room", (roomId) => {
+    socket.join(roomId);
+    console.log(`Socket ${socket.id} joined room ${roomId}`);
+  });
+
   socket.on("disconnect", () => {
     console.log("User disconnected:", socket.id);
   });
@@ -94,6 +99,7 @@ app.post("/rooms/:id/join", (req, res) => {
 
   // add to waiting list
   room.waiting.push({ name });
+  io.to(req.params.id).emit("user-waiting", name);
 
   res.json({ status: "waiting" });
 });
@@ -118,7 +124,7 @@ app.post("/rooms/:id/approve", (req, res) => {
 
   // add to approved
   room.approved.push(user);
-
+   io.to(req.params.id).emit("user-approved", user.name);
   res.json({ success: true });
 });
 
