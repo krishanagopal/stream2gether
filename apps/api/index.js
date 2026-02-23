@@ -22,9 +22,14 @@ io.on("connection", (socket) => {
   console.log("User connected:", socket.id);
 
   socket.on("join-room", (roomId) => {
-    socket.join(roomId);
-    console.log(`Socket ${socket.id} joined room ${roomId}`);
-  });
+  socket.join(roomId);
+  console.log(`Socket ${socket.id} joined room ${roomId}`);
+
+  const room = rooms[roomId];
+  if (room) {
+    socket.emit("room-state", room);
+  }
+});
 
   socket.on("disconnect", () => {
     console.log("User disconnected:", socket.id);
@@ -34,6 +39,12 @@ io.on("connection", (socket) => {
 
 /* In-memory storage */
 const rooms = {};
+function broadcastRoom(roomId) {
+  const room = rooms[roomId];
+  if (!room) return;
+
+  io.to(roomId).emit("room-state", room);
+}
 
 /* Health check */
 app.get("/health", (req, res) => {
@@ -99,7 +110,7 @@ app.post("/rooms/:id/join", (req, res) => {
 
   // add to waiting list
   room.waiting.push({ name });
-  io.to(req.params.id).emit("user-waiting", name);
+ broadcastRoom(req.params.id);
 
   res.json({ status: "waiting" });
 });
@@ -124,7 +135,7 @@ app.post("/rooms/:id/approve", (req, res) => {
 
   // add to approved
   room.approved.push(user);
-   io.to(req.params.id).emit("user-approved", user.name);
+   broadcastRoom(req.params.id);
   res.json({ success: true });
 });
 

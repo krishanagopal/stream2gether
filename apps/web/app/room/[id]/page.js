@@ -19,25 +19,36 @@ export default function RoomPage() {
   const [socket, setSocket] = useState(null);
 
 
+
+  useEffect(() => {
+  const savedName = localStorage.getItem("watchparty-name");
+  if (savedName) {
+    setName(savedName);
+  }
+}, []);
+
   /* ---------------- HOST AUTO JOIN ---------------- */
 useEffect(() => {
   if (!socket) return;
 
-  // guest approved → enter instantly
-  socket.on("user-approved", (approvedName) => {
-    if (approvedName === name) {
-      setStatus("joined");
-    }
-  });
+  socket.on("room-state", (room) => {
+    setParticipants(room.approved || []);
+    setWaitingUsers(room.waiting || []);
 
-  // someone waiting → update host UI immediately
-  socket.on("user-waiting", (waitingName) => {
-    setWaitingUsers(prev => [...prev, { name: waitingName }]);
+    const isApproved = room.approved?.find(p => p.name === name);
+    const isWaiting = room.waiting?.find(p => p.name === name);
+
+    if (!name) return; // do nothing if user hasn't entered name yet
+
+if (isApproved) {
+  setStatus("joined");
+} else if (isWaiting) {
+  setStatus("waiting");
+}
   });
 
   return () => {
-    socket.off("user-approved");
-    socket.off("user-waiting");
+    socket.off("room-state");
   };
 }, [socket, name]);
 
@@ -81,10 +92,12 @@ useEffect(() => {
       }
 
       if (data.status === "waiting") {
-        setStatus("waiting");
-      } else {
-        setStatus("joined");
-      }
+  localStorage.setItem("watchparty-name", name);
+  setStatus("waiting");
+} else {
+  localStorage.setItem("watchparty-name", name);
+  setStatus("joined");
+}
 
     } catch {
       setError("Server unreachable");
@@ -120,32 +133,7 @@ useEffect(() => {
 }, [params.id]);
 
   /* ---------------- POLLING PARTICIPANTS ---------------- */
-useEffect(() => {
-  if (status !== "joined" && status !== "waiting") return;
 
-  const interval = setInterval(async () => {
-    try {
-      const res = await fetch(`http://localhost:4000/rooms/${params.id}`);
-      if (!res.ok) return;
-
-      const data = await res.json();
-
-      // host or approved users
-      setParticipants(data.approved || []);
-      setWaitingUsers(data.waiting || []);
-
-      // if I was waiting and now approved → enter room
-      const isApproved = data.approved?.find(p => p.name === name);
-
-      if (status === "waiting" && isApproved) {
-        setStatus("joined");
-      }
-
-    } catch {}
-  }, 2000);
-
-  return () => clearInterval(interval);
-}, [status, params.id, name]);
 
 
   /* ---------------- UI STATES ---------------- */
