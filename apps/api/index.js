@@ -32,13 +32,27 @@ if (pendingRemovals[name]) {
     socket.data.roomId = roomId;
     socket.data.name = name;
 
+    const room = rooms[roomId];
+if (room) {
+  const approvedUser = room.approved.find(u => u.name === name);
+  if (approvedUser) {
+    approvedUser.socketId = socket.id;
+  }
+}
     console.log(`Socket ${socket.id} joined room ${roomId} as ${name}`);
 
-    const room = rooms[roomId];
+    
     if (room) {
       socket.emit("room-state", room);
     }
   });
+
+  socket.on("signal", ({ targetSocketId, signalData }) => {
+  io.to(targetSocketId).emit("signal", {
+    from: socket.id,
+    signalData,
+  });
+});
 
  socket.on("disconnect", () => {
   const { roomId, name } = socket.data;
@@ -91,7 +105,7 @@ app.post("/rooms", (req, res) => {
   rooms[id] = {
     id,
     host: name,
-    approved: [{ name }],
+    approved: [{ name,socketId:null }],
     waiting: [],
   };
 
@@ -161,7 +175,10 @@ app.post("/rooms/:id/approve", (req, res) => {
   const [user] = room.waiting.splice(index, 1);
 
   // add to approved
-  room.approved.push(user);
+  room.approved.push({
+    name: user.name,
+    socketId: null,
+  });
    broadcastRoom(req.params.id);
   res.json({ success: true });
 });

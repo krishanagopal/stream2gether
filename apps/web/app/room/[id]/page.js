@@ -17,7 +17,7 @@ export default function RoomPage() {
   const [participants, setParticipants] = useState([]);
   const [waitingUsers, setWaitingUsers] = useState([]);
   const [socket, setSocket] = useState(null);
-
+  const [mySocketId, setMySocketId] = useState(null);
 
 
   useEffect(() => {
@@ -59,6 +59,12 @@ useEffect(() => {
   socket.on("room-state", (room) => {
     setParticipants(room.approved || []);
     setWaitingUsers(room.waiting || []);
+
+const otherPeers = (room.approved || []).filter(
+  user => user.name !== name
+);
+
+console.log("Peers I should connect to:", otherPeers);
 
     const isApproved = room.approved?.find(p => p.name === name);
     const isWaiting = room.waiting?.find(p => p.name === name);
@@ -149,6 +155,16 @@ useEffect(() => {
   if (!name) return;
 
   const s = io("http://localhost:4000");
+
+s.on("connect", () => {
+  console.log("My socket ID:", s.id);
+  setMySocketId(s.id);
+});
+
+   s.on("connect", () => {
+    console.log("My socket ID:", s.id);
+    setMySocketId(s.id);
+  });
 
   s.emit("join-room", {
     roomId: params.id,
