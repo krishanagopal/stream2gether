@@ -21,11 +21,36 @@ export default function RoomPage() {
 
 
   useEffect(() => {
-  const savedName = localStorage.getItem("watchparty-name");
-  if (savedName) {
-    setName(savedName);
+  const savedName = localStorage.getItem(`watchparty-name-${params.id}`);
+
+  if (!savedName) return;
+
+  setName(savedName);
+
+  async function rejoin() {
+    try {
+      const res = await fetch(`http://localhost:4000/rooms/${params.id}/join`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ name: savedName }),
+      });
+
+      const data = await res.json();
+
+      if (data.status === "waiting") {
+        setStatus("waiting");
+      } else {
+        setStatus("joined");
+      }
+    } catch {
+      setStatus("enter-name");
+    }
   }
-}, []);
+
+  rejoin();
+}, [params.id]);
 
   /* ---------------- HOST AUTO JOIN ---------------- */
 useEffect(() => {
@@ -92,7 +117,7 @@ if (isApproved) {
       }
 
       if (data.status === "waiting") {
-  localStorage.setItem("watchparty-name", name);
+  localStorage.setItem(`watchparty-name-${params.id}`, name);
   setStatus("waiting");
 } else {
   localStorage.setItem("watchparty-name", name);
@@ -121,16 +146,21 @@ if (isApproved) {
 
 
 useEffect(() => {
+  if (!name) return;
+
   const s = io("http://localhost:4000");
 
-  s.emit("join-room", params.id);
+  s.emit("join-room", {
+    roomId: params.id,
+    name,
+  });
 
   setSocket(s);
 
   return () => {
     s.disconnect();
   };
-}, [params.id]);
+}, [params.id, name]);
 
   /* ---------------- POLLING PARTICIPANTS ---------------- */
 

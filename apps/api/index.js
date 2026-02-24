@@ -19,26 +19,53 @@ app.use(cors());
 app.use(express.json());
 
 io.on("connection", (socket) => {
-  console.log("User connected:", socket.id);
 
-  socket.on("join-room", (roomId) => {
-  socket.join(roomId);
-  console.log(`Socket ${socket.id} joined room ${roomId}`);
+  socket.on("join-room", ({ roomId, name }) => {
+    // If user had a pending removal, cancel it
+if (pendingRemovals[name]) {
+  clearTimeout(pendingRemovals[name]);
+  delete pendingRemovals[name];
+}
+    
+    socket.join(roomId);
 
-  const room = rooms[roomId];
-  if (room) {
-    socket.emit("room-state", room);
-  }
-});
+    socket.data.roomId = roomId;
+    socket.data.name = name;
 
-  socket.on("disconnect", () => {
-    console.log("User disconnected:", socket.id);
+    console.log(`Socket ${socket.id} joined room ${roomId} as ${name}`);
+
+    const room = rooms[roomId];
+    if (room) {
+      socket.emit("room-state", room);
+    }
   });
+
+ socket.on("disconnect", () => {
+  const { roomId, name } = socket.data;
+
+  if (!roomId || !name) return;
+
+  pendingRemovals[name] = setTimeout(() => {
+    const room = rooms[roomId];
+    if (!room) return;
+
+    room.approved = room.approved.filter(u => u.name !== name);
+    room.waiting = room.waiting.filter(u => u.name !== name);
+
+    console.log(`${name} permanently removed from room ${roomId}`);
+
+    broadcastRoom(roomId);
+    delete pendingRemovals[name];
+  }, 5000); // 5 second grace period
 });
+});
+
+
 
 
 /* In-memory storage */
 const rooms = {};
+const pendingRemovals = {};
 function broadcastRoom(roomId) {
   const room = rooms[roomId];
   if (!room) return;
@@ -97,10 +124,10 @@ app.post("/rooms/:id/join", (req, res) => {
   }
 
   // already approved?
-  const inApproved = room.approved.find(p => p.name === name);
-  if (inApproved) {
-    return res.status(400).json({ error: "Already in room" });
-  }
+ const inApproved = room.approved.find(p => p.name === name);
+if (inApproved) {
+  return res.json({ status: "joined" });
+}
 
   // already waiting?
   const inWaiting = room.waiting.find(p => p.name === name);
