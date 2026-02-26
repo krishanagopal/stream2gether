@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect,useRef  } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import { io } from "socket.io-client";
 
@@ -18,6 +18,7 @@ export default function RoomPage() {
   const [waitingUsers, setWaitingUsers] = useState([]);
   const [socket, setSocket] = useState(null);
   const [mySocketId, setMySocketId] = useState(null);
+  const peerConnectionsRef = useRef({});
 
 
   useEffect(() => {
@@ -65,15 +66,52 @@ const otherPeers = (room.approved || []).filter(
 );
 
 console.log("Peers I should connect to:", otherPeers);
+otherPeers.forEach(async (peer) => {
+  let pc = peerConnectionsRef.current[peer.socketId];
+
+  if (!pc) {
+    console.log("Creating RTCPeerConnection for:", peer.name);
+
+    pc = new RTCPeerConnection();
+    peerConnectionsRef.current[peer.socketId] = pc;
+
+    pc.onicecandidate = (event) => {
+      if (event.candidate) {
+        socket.emit("signal", {
+          targetSocketId: peer.socketId,
+          signalData: {
+            type: "ice-candidate",
+            candidate: event.candidate
+          }
+        });
+      }
+    };
+  }
+
+  const offer = await pc.createOffer();
+  await pc.setLocalDescription(offer);
+
+  socket.emit("signal", {
+    targetSocketId: peer.socketId,
+    signalData: {
+      type: "offer",
+      sdp: offer
+    }
+  });
+
+  console.log("Sent offer to:", peer.name);
+});
+
+
+
 
     const isApproved = room.approved?.find(p => p.name === name);
     const isWaiting = room.waiting?.find(p => p.name === name);
 
     if (!name) return; // do nothing if user hasn't entered name yet
-
 if (isApproved) {
   setStatus("joined");
-} else if (isWaiting) {
+} else if (isWaiting && status !== "joined") {
   setStatus("waiting");
 }
   });
@@ -82,6 +120,70 @@ if (isApproved) {
     socket.off("room-state");
   };
 }, [socket, name]);
+
+
+useEffect(() => {
+  if (!socket) return;
+
+  socket.on("signal", async ({ from, signalData }) => {
+    console.log("Received signal from:", from);
+    console.log("Signal data:", signalData);
+
+    let pc = peerConnectionsRef.current[from];
+
+    if (!pc) {
+      pc = new RTCPeerConnection();
+      peerConnectionsRef.current[from] = pc;
+
+      pc.onicecandidate = (event) => {
+        if (event.candidate) {
+          socket.emit("signal", {
+            targetSocketId: from,
+            signalData: {
+              type: "ice-candidate",
+              candidate: event.candidate
+            }
+          });
+        }
+      };
+    }
+
+    if (signalData.type === "offer") {
+      await pc.setRemoteDescription(
+        new RTCSessionDescription(signalData.sdp)
+      );
+
+      const answer = await pc.createAnswer();
+      await pc.setLocalDescription(answer);
+
+      socket.emit("signal", {
+        targetSocketId: from,
+        signalData: {
+          type: "answer",
+          sdp: answer
+        }
+      });
+
+      console.log("Sent answer to:", from);
+    }
+
+    if (signalData.type === "answer") {
+      await pc.setRemoteDescription(
+        new RTCSessionDescription(signalData.sdp)
+      );
+
+      console.log("Received answer from:", from);
+    }
+
+    if (signalData.type === "ice-candidate") {
+      await pc.addIceCandidate(signalData.candidate);
+    }
+  });
+
+  return () => {
+    socket.off("signal");
+  };
+}, [socket]);
 
 
   useEffect(() => {
@@ -161,10 +263,7 @@ s.on("connect", () => {
   setMySocketId(s.id);
 });
 
-   s.on("connect", () => {
-    console.log("My socket ID:", s.id);
-    setMySocketId(s.id);
-  });
+   
 
   s.emit("join-room", {
     roomId: params.id,

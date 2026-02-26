@@ -140,7 +140,7 @@ app.post("/rooms/:id/join", (req, res) => {
   // already approved?
  const inApproved = room.approved.find(p => p.name === name);
 if (inApproved) {
-  return res.json({ status: "joined" });
+  return res.json({ status: "approved" });
 }
 
   // already waiting?
