@@ -19,7 +19,31 @@ export default function RoomPage() {
   const [socket, setSocket] = useState(null);
   const [mySocketId, setMySocketId] = useState(null);
   const peerConnectionsRef = useRef({});
+  const localVideoRef = useRef(null);
 
+
+
+  useEffect(() => {
+  async function getMedia() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: true,
+        audio: true,
+      });
+
+      if (localVideoRef.current) {
+        localVideoRef.current.srcObject = stream;
+      }
+
+      window.localStream = stream;
+
+    } catch (err) {
+      console.error("Error accessing media devices:", err);
+    }
+  }
+
+  getMedia();
+}, []);
 
   useEffect(() => {
   const savedName = localStorage.getItem(`watchparty-name-${params.id}`);
@@ -66,6 +90,9 @@ const otherPeers = (room.approved || []).filter(
 );
 
 console.log("Peers I should connect to:", otherPeers);
+
+//room state
+if (!hostName) return;
 otherPeers.forEach(async (peer) => {
   let pc = peerConnectionsRef.current[peer.socketId];
 
@@ -74,6 +101,28 @@ otherPeers.forEach(async (peer) => {
 
     pc = new RTCPeerConnection();
     peerConnectionsRef.current[peer.socketId] = pc;
+
+    if (window.localStream) {
+  window.localStream.getTracks().forEach(track => {
+    pc.addTrack(track, window.localStream);
+  });
+}
+pc.ontrack = (event) => {
+  console.log("Remote stream received");
+
+  let remoteVideo = document.getElementById(peer.socketId);
+
+  if (!remoteVideo) {
+    remoteVideo = document.createElement("video");
+    remoteVideo.id = peer.socketId;
+    remoteVideo.autoplay = true;
+    remoteVideo.playsInline = true;
+    remoteVideo.style.width = "300px";
+    document.body.appendChild(remoteVideo);
+  }
+
+  remoteVideo.srcObject = event.streams[0];
+};
 
     pc.onicecandidate = (event) => {
       if (event.candidate) {
@@ -175,9 +224,15 @@ useEffect(() => {
       console.log("Received answer from:", from);
     }
 
-    if (signalData.type === "ice-candidate") {
+   if (signalData.type === "ice-candidate") {
+  try {
+    if (pc.remoteDescription) {
       await pc.addIceCandidate(signalData.candidate);
     }
+  } catch (err) {
+    console.log("ICE skipped");
+  }
+}
   });
 
   return () => {
@@ -322,6 +377,16 @@ s.on("connect", () => {
   return (
   <main style={{ padding: 40 }}>
     <h1>Room: {params.id}</h1>
+
+
+    <h3>My Video</h3>
+<video
+  ref={localVideoRef}
+  autoPlay
+  playsInline
+  muted
+  style={{ width: 300 }}
+/>
 
     <h3>Participants:</h3>
     <ul>

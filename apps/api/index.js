@@ -43,7 +43,7 @@ if (room) {
 
     
     if (room) {
-      socket.emit("room-state", room);
+      io.to(roomId).emit("room-state", room);
     }
   });
 
@@ -157,7 +157,8 @@ if (inApproved) {
 });
 
 app.post("/rooms/:id/approve", (req, res) => {
-  const room = rooms[req.params.id];
+  const roomId = req.params.id;
+  const room = rooms[roomId];
 
   if (!room) {
     return res.status(404).json({ error: "Room not found" });
@@ -165,21 +166,22 @@ app.post("/rooms/:id/approve", (req, res) => {
 
   const { name } = req.body;
 
-  const index = room.waiting.findIndex(u => u.name === name);
+  const index = room.waiting.findIndex(
+    u => u.name === name
+  );
 
   if (index === -1) {
-    return res.status(400).json({ error: "User not in waiting list" });
+    return res.status(400).json({ error: "User not in waiting" });
   }
 
-  // remove from waiting
-  const [user] = room.waiting.splice(index, 1);
+  const user = room.waiting.splice(index, 1)[0];
 
-  // add to approved
-  room.approved.push({
-    name: user.name,
-    socketId: null,
-  });
-   broadcastRoom(req.params.id);
+  room.approved.push(user);
+
+  console.log(`${name} approved`);
+
+  broadcastRoom(roomId);
+
   res.json({ success: true });
 });
 
