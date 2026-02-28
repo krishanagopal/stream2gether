@@ -20,10 +20,14 @@ export default function RoomPage() {
   const [mySocketId, setMySocketId] = useState(null);
   const peerConnectionsRef = useRef({});
   const localVideoRef = useRef(null);
+  const remoteVideoRef = useRef(null);
+  const isHost = !!hostName;
+  const mediaReadyRef = useRef(false);
 
 
 
   useEffect(() => {
+      if (!isHost) return;
   async function getMedia() {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -36,6 +40,8 @@ export default function RoomPage() {
       }
 
       window.localStream = stream;
+      mediaReadyRef.current = true;
+      socket?.emit("media-ready");
 
     } catch (err) {
       console.error("Error accessing media devices:", err);
@@ -43,7 +49,7 @@ export default function RoomPage() {
   }
 
   getMedia();
-}, []);
+}, [isHost]);
 
   useEffect(() => {
   const savedName = localStorage.getItem(`watchparty-name-${params.id}`);
@@ -92,50 +98,68 @@ const otherPeers = (room.approved || []).filter(
 console.log("Peers I should connect to:", otherPeers);
 
 //room state
-if (!hostName) return;
-otherPeers.forEach(async (peer) => {
-  let pc = peerConnectionsRef.current[peer.socketId];
+if (!isHost) return;
 
-  if (!pc) {
-    console.log("Creating RTCPeerConnection for:", peer.name);
-
-    pc = new RTCPeerConnection();
-    peerConnectionsRef.current[peer.socketId] = pc;
-
-    if (window.localStream) {
-  window.localStream.getTracks().forEach(track => {
-    pc.addTrack(track, window.localStream);
-  });
+if (!mediaReadyRef.current) {
+  console.log("Waiting for media readiness");
+  return;
 }
+
+otherPeers.forEach(async (peer) => {
+ let pc = peerConnectionsRef.current[peer.socketId];
+
+if (
+  pc &&
+  pc.connectionState !== "failed" &&
+  pc.connectionState !== "closed"
+) {
+  console.log("Already connected:", peer.name);
+  return;
+}
+
+  console.log("Creating RTCPeerConnection for:", peer.name);
+
+  pc = new RTCPeerConnection();
 pc.ontrack = (event) => {
-  console.log("Remote stream received");
-
-  let remoteVideo = document.getElementById(peer.socketId);
-
-  if (!remoteVideo) {
-    remoteVideo = document.createElement("video");
-    remoteVideo.id = peer.socketId;
-    remoteVideo.autoplay = true;
-    remoteVideo.playsInline = true;
-    remoteVideo.style.width = "300px";
-    document.body.appendChild(remoteVideo);
+  console.log("Host received remote stream");
+};
+  
+  pc.onconnectionstatechange = () => {
+  if (
+    pc.connectionState === "failed" ||
+    pc.connectionState === "disconnected" ||
+    pc.connectionState === "closed"
+  ) {
+    delete peerConnectionsRef.current[peer.socketId];
   }
-
-  remoteVideo.srcObject = event.streams[0];
+};
+  pc.onnegotiationneeded = async () => {
+  console.log("Negotiation triggered");
 };
 
-    pc.onicecandidate = (event) => {
-      if (event.candidate) {
-        socket.emit("signal", {
-          targetSocketId: peer.socketId,
-          signalData: {
-            type: "ice-candidate",
-            candidate: event.candidate
-          }
-        });
-      }
-    };
+  peerConnectionsRef.current[peer.socketId] = pc;
+
+  if (window.localStream) {
+    const stream = window.localStream;
+
+stream.getTracks().forEach(track => {
+  pc.addTrack(track, stream);
+});
+await new Promise(r => setTimeout(r, 0));
+
   }
+
+  pc.onicecandidate = (event) => {
+    if (event.candidate) {
+      socket.emit("signal", {
+        targetSocketId: peer.socketId,
+        signalData: {
+          type: "ice-candidate",
+          candidate: event.candidate
+        }
+      });
+    }
+  };
 
   const offer = await pc.createOffer();
   await pc.setLocalDescription(offer);
@@ -174,15 +198,33 @@ if (isApproved) {
 useEffect(() => {
   if (!socket) return;
 
-  socket.on("signal", async ({ from, signalData }) => {
-    console.log("Received signal from:", from);
-    console.log("Signal data:", signalData);
+  const handler = async ({ from, signalData }) => {
 
     let pc = peerConnectionsRef.current[from];
 
-    if (!pc) {
+    if (!pc || pc.connectionState === "closed") {
+      console.log("Creating PC for incoming signal");
+
       pc = new RTCPeerConnection();
       peerConnectionsRef.current[from] = pc;
+      pc.addTransceiver("video", { direction: "recvonly" });
+      pc.addTransceiver("audio", { direction: "recvonly" });
+
+     pc.ontrack = (event) => {
+  console.log("Guest received stream");
+
+  if (remoteVideoRef.current) {
+    const video = remoteVideoRef.current;
+
+    video.srcObject = event.streams[0];
+
+    video.onloadedmetadata = () => {
+      video.play().catch(err =>
+        console.log("Autoplay prevented:", err)
+      );
+    };
+  }
+};
 
       pc.onicecandidate = (event) => {
         if (event.candidate) {
@@ -197,6 +239,7 @@ useEffect(() => {
       };
     }
 
+    // ✅ OFFER RECEIVED (guest side)
     if (signalData.type === "offer") {
       await pc.setRemoteDescription(
         new RTCSessionDescription(signalData.sdp)
@@ -213,31 +256,36 @@ useEffect(() => {
         }
       });
 
-      console.log("Sent answer to:", from);
+      console.log("Answer sent");
     }
 
+    // ✅ ANSWER RECEIVED (host side)
     if (signalData.type === "answer") {
       await pc.setRemoteDescription(
         new RTCSessionDescription(signalData.sdp)
       );
 
-      console.log("Received answer from:", from);
+      console.log("Answer received");
     }
 
-   if (signalData.type === "ice-candidate") {
-  try {
-    if (pc.remoteDescription) {
-      await pc.addIceCandidate(signalData.candidate);
+    // ✅ ICE
+    if (signalData.type === "ice-candidate") {
+      try {
+        if (pc.remoteDescription) {
+          await pc.addIceCandidate(signalData.candidate);
+        }
+      } catch {
+        console.log("ICE skipped");
+      }
     }
-  } catch (err) {
-    console.log("ICE skipped");
-  }
-}
-  });
+  };
+
+  socket.on("signal", handler);
 
   return () => {
-    socket.off("signal");
+    socket.off("signal", handler);
   };
+
 }, [socket]);
 
 
@@ -388,6 +436,16 @@ s.on("connect", () => {
   style={{ width: 300 }}
 />
 
+
+<h3>Host Stream</h3>
+<video
+  ref={remoteVideoRef}
+  autoPlay
+  playsInline
+  muted
+  style={{ width: 400 }}
+/>
+
     <h3>Participants:</h3>
     <ul>
       {participants.map((p, i) => (
@@ -415,4 +473,5 @@ s.on("connect", () => {
 );
 
 }
+
 
