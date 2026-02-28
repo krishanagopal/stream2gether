@@ -23,7 +23,7 @@ export default function RoomPage() {
   const remoteVideoRef = useRef(null);
   const isHost = !!hostName;
   const mediaReadyRef = useRef(false);
-
+const latestRoomRef = useRef(null);
 
 
   useEffect(() => {
@@ -41,6 +41,7 @@ export default function RoomPage() {
 
       window.localStream = stream;
       mediaReadyRef.current = true;
+      connectHostToPeers();
       socket?.emit("media-ready");
 
     } catch (err) {
@@ -88,6 +89,7 @@ useEffect(() => {
   if (!socket) return;
 
   socket.on("room-state", (room) => {
+    latestRoomRef.current = room;
     setParticipants(room.approved || []);
     setWaitingUsers(room.waiting || []);
 
@@ -187,6 +189,7 @@ if (isApproved) {
 } else if (isWaiting && status !== "joined") {
   setStatus("waiting");
 }
+connectHostToPeers();
   });
 
   return () => {
@@ -375,6 +378,9 @@ s.on("connect", () => {
 
   setSocket(s);
 
+
+ 
+
   return () => {
     s.disconnect();
   };
@@ -382,7 +388,41 @@ s.on("connect", () => {
 
   /* ---------------- POLLING PARTICIPANTS ---------------- */
 
+ async function startScreenShare() {
+  try {
+    const screenStream =
+      await navigator.mediaDevices.getDisplayMedia({
+        video: true,
+        audio: true,
+      });
 
+    const screenTrack =
+      screenStream.getVideoTracks()[0];
+
+    // show locally
+    if (localVideoRef.current) {
+      localVideoRef.current.srcObject =
+        screenStream;
+    }
+
+    // 🔥 replace track for ALL guests
+    Object.values(peerConnectionsRef.current)
+      .forEach((pc) => {
+        const sender = pc
+          .getSenders()
+          .find((s) => s.track?.kind === "video");
+
+        if (sender) {
+          sender.replaceTrack(screenTrack);
+        }
+      });
+
+    console.log("Screen sharing started");
+
+  } catch (err) {
+    console.log("Screen share cancelled");
+  }
+}
 
   /* ---------------- UI STATES ---------------- */
 
@@ -422,6 +462,71 @@ s.on("connect", () => {
     );
   }
 
+  function connectHostToPeers() {
+  if (!isHost) return;
+  if (!mediaReadyRef.current) return;
+
+  const room = latestRoomRef.current;
+  if (!room) return;
+
+  const otherPeers =
+    (room.approved || []).filter(
+      u => u.name !== name
+    );
+
+  otherPeers.forEach(async (peer) => {
+
+    let pc =
+      peerConnectionsRef.current[
+        peer.socketId
+      ];
+
+    if (pc && pc.connectionState !== "closed")
+      return;
+
+    pc = new RTCPeerConnection();
+    peerConnectionsRef.current[
+      peer.socketId
+    ] = pc;
+
+    window.localStream
+      .getTracks()
+      .forEach(track =>
+        pc.addTrack(track,
+          window.localStream)
+      );
+
+    pc.onicecandidate = (e) => {
+      if (e.candidate) {
+        socket.emit("signal", {
+          targetSocketId:
+            peer.socketId,
+          signalData:{
+            type:"ice-candidate",
+            candidate:e.candidate
+          }
+        });
+      }
+    };
+
+    const offer =
+      await pc.createOffer();
+
+    await pc.setLocalDescription(
+      offer
+    );
+
+    socket.emit("signal",{
+      targetSocketId:
+        peer.socketId,
+      signalData:{
+        type:"offer",
+        sdp:offer
+      }
+    });
+  });
+}
+
   return (
   <main style={{ padding: 40 }}>
     <h1>Room: {params.id}</h1>
@@ -435,7 +540,14 @@ s.on("connect", () => {
   muted
   style={{ width: 300 }}
 />
-
+{isHost && (
+  <button
+    onClick={startScreenShare}
+    style={{ marginTop: 10 }}
+  >
+    Share Screen / YouTube
+  </button>
+)}
 
 <h3>Host Stream</h3>
 <video
