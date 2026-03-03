@@ -19,7 +19,9 @@ app.use(cors());
 app.use(express.json());
 
 io.on("connection", (socket) => {
-
+socket.on("watchparty-action", ({ roomId, action }) => {
+  socket.to(roomId).emit("watchparty-action", action);
+});
   socket.on("join-room", ({ roomId, name }) => {
     // If user had a pending removal, cancel it
 if (pendingRemovals[name]) {

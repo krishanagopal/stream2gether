@@ -292,6 +292,34 @@ useEffect(() => {
 }, [socket]);
 
 
+
+useEffect(() => {
+  if (!socket) return;
+
+  const watchHandler = (action) => {
+    console.log("Guest received:", action);
+
+    const video = remoteVideoRef.current;
+    if (!video) return;
+
+    if (action.type === "play") {
+      video.play().catch(() => {});
+    }
+
+    if (action.type === "pause") {
+      video.pause();
+    }
+  };
+
+  socket.on("watchparty-action", watchHandler);
+
+  return () => {
+    socket.off("watchparty-action", watchHandler);
+  };
+
+}, [socket]);
+
+
   useEffect(() => {
     if (!hostName) return;
 
@@ -527,6 +555,21 @@ s.on("connect", () => {
   });
 }
 
+function sendWatchAction(type) {
+  if (!socket) return;
+
+  socket.emit("watchparty-action", {
+    roomId: params.id,
+    action: {
+      type,
+      time: Date.now()
+    }
+  });
+
+  console.log("Host action:", type);
+}
+
+
   return (
   <main style={{ padding: 40 }}>
     <h1>Room: {params.id}</h1>
@@ -547,6 +590,17 @@ s.on("connect", () => {
   >
     Share Screen / YouTube
   </button>
+)}
+{isHost && (
+  <div style={{ marginTop: 20 }}>
+    <button onClick={() => sendWatchAction("play")}>
+      Play
+    </button>
+
+    <button onClick={() => sendWatchAction("pause")}>
+      Pause
+    </button>
+  </div>
 )}
 
 <h3>Host Stream</h3>
