@@ -56,6 +56,15 @@ if (room) {
   });
 });
 
+socket.on("request-sync", ({ roomId }) => {
+  socket.to(roomId).emit("sync-requested", socket.id);
+});
+
+socket.on("sync-state", ({ targetId, state }) => {
+  io.to(targetId).emit("sync-state", state);
+});
+
+
  socket.on("disconnect", () => {
   const { roomId, name } = socket.data;
 

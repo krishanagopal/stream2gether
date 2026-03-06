@@ -25,6 +25,11 @@ export default function RoomPage() {
   const mediaReadyRef = useRef(false);
 const latestRoomRef = useRef(null);
 
+ const hostPlaybackRef = useRef({
+  playing: false,
+  time: 0,
+  updatedAt: 0,
+});
 
   useEffect(() => {
       if (!isHost) return;
@@ -296,25 +301,72 @@ useEffect(() => {
 useEffect(() => {
   if (!socket) return;
 
-  const watchHandler = (action) => {
-    console.log("Guest received:", action);
+  /* ---------------- LIVE PLAYBACK SYNC ---------------- */
+
+ const watchHandler = (action) => {
+  console.log("Guest received:", action);
+
+  const video = remoteVideoRef.current;
+  if (!video) return;
+
+  if (action.type === "play") {
+    video.play().catch(() => {});
+  }
+
+  if (action.type === "pause") {
+    video.pause();
+  }
+
+  if (action.type === "seek") {
+    const delay =
+      (Date.now() - action.updatedAt) / 1000;
+
+    video.currentTime = action.time + delay;
+  }
+};
+
+  socket.on("watchparty-action", watchHandler);
+
+
+  /* ---------------- STEP 5: HOST RESPONDS ---------------- */
+
+  socket.on("sync-requested", (targetId) => {
+    if (!isHost) return;
+
+    socket.emit("sync-state", {
+      targetId,
+      state: hostPlaybackRef.current,
+    });
+  });
+
+
+  /* ---------------- STEP 6: GUEST APPLIES ---------------- */
+
+  socket.on("sync-state", (state) => {
+    if (isHost) return;
 
     const video = remoteVideoRef.current;
     if (!video) return;
 
-    if (action.type === "play") {
-      video.play().catch(() => {});
-    }
+    const delay =
+      (Date.now() - state.updatedAt) / 1000;
 
-    if (action.type === "pause") {
+    video.currentTime = state.time + delay;
+
+    if (state.playing) {
+      video.play().catch(() => {});
+    } else {
       video.pause();
     }
-  };
 
-  socket.on("watchparty-action", watchHandler);
+    console.log("Late join synced");
+  });
+
 
   return () => {
     socket.off("watchparty-action", watchHandler);
+    socket.off("sync-requested");
+    socket.off("sync-state");
   };
 
 }, [socket]);
@@ -406,6 +458,9 @@ s.on("connect", () => {
 
   setSocket(s);
 
+s.emit("request-sync", {
+  roomId: params.id,
+});
 
  
 
@@ -414,6 +469,47 @@ s.on("connect", () => {
   };
 }, [params.id, name]);
 
+
+useEffect(() => {
+  if (!isHost) return;
+
+  const video = localVideoRef.current;
+  if (!video) return;
+
+  let lastTime = video.currentTime;
+
+  const interval = setInterval(() => {
+    if (!video) return;
+
+    const diff = Math.abs(video.currentTime - lastTime);
+
+    // detect manual seek (big jump)
+    if (diff > 1.5) {
+      console.log("Host seek detected");
+
+      hostPlaybackRef.current = {
+        playing: !video.paused,
+        time: video.currentTime,
+        updatedAt: Date.now(),
+      };
+
+      socket.emit("watchparty-action", {
+        roomId: params.id,
+        action: {
+          type: "seek",
+          time: video.currentTime,
+          updatedAt: hostPlaybackRef.current.updatedAt,
+        },
+      });
+    }
+
+    lastTime = video.currentTime;
+
+  }, 500);
+
+  return () => clearInterval(interval);
+
+}, [socket, isHost]);
   /* ---------------- POLLING PARTICIPANTS ---------------- */
 
  async function startScreenShare() {
@@ -558,15 +654,22 @@ s.on("connect", () => {
 function sendWatchAction(type) {
   if (!socket) return;
 
+  const video = localVideoRef.current;
+
+  hostPlaybackRef.current = {
+    playing: type === "play",
+    time: video?.currentTime || 0,
+    updatedAt: Date.now(),
+  };
+
   socket.emit("watchparty-action", {
     roomId: params.id,
     action: {
       type,
-      time: Date.now()
-    }
+      time: hostPlaybackRef.current.time,
+      updatedAt: hostPlaybackRef.current.updatedAt,
+    },
   });
-
-  console.log("Host action:", type);
 }
 
 
