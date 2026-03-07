@@ -22,6 +22,9 @@ io.on("connection", (socket) => {
 socket.on("watchparty-action", ({ roomId, action }) => {
   socket.to(roomId).emit("watchparty-action", action);
 });
+socket.on("guest-ready", ({ roomId }) => {
+  socket.to(roomId).emit("guest-ready", socket.id);
+});
   socket.on("join-room", ({ roomId, name }) => {
     // If user had a pending removal, cancel it
 if (pendingRemovals[name]) {

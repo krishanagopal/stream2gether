@@ -18,6 +18,15 @@ export default function RoomPage() {
   const [waitingUsers, setWaitingUsers] = useState([]);
   const [socket, setSocket] = useState(null);
   const [mySocketId, setMySocketId] = useState(null);
+  const [remoteStream, setRemoteStream] = useState(null);
+
+  useEffect(() => {
+    if (remoteVideoRef.current && remoteStream) {
+      if (remoteVideoRef.current.srcObject !== remoteStream) {
+        remoteVideoRef.current.srcObject = remoteStream;
+      }
+    }
+  }, [remoteStream, status]);
   const peerConnectionsRef = useRef({});
   const localVideoRef = useRef(null);
   const remoteVideoRef = useRef(null);
@@ -94,112 +103,36 @@ useEffect(() => {
   if (!socket) return;
 
   socket.on("room-state", (room) => {
+
     latestRoomRef.current = room;
+
     setParticipants(room.approved || []);
     setWaitingUsers(room.waiting || []);
 
-const otherPeers = (room.approved || []).filter(
-  user => user.name !== name
-);
-
-console.log("Peers I should connect to:", otherPeers);
-
-//room state
-if (!isHost) return;
-
-if (!mediaReadyRef.current) {
-  console.log("Waiting for media readiness");
-  return;
-}
-
-otherPeers.forEach(async (peer) => {
- let pc = peerConnectionsRef.current[peer.socketId];
-
-if (
-  pc &&
-  pc.connectionState !== "failed" &&
-  pc.connectionState !== "closed"
-) {
-  console.log("Already connected:", peer.name);
-  return;
-}
-
-  console.log("Creating RTCPeerConnection for:", peer.name);
-
-  pc = new RTCPeerConnection();
-pc.ontrack = (event) => {
-  console.log("Host received remote stream");
-};
-  
-  pc.onconnectionstatechange = () => {
-  if (
-    pc.connectionState === "failed" ||
-    pc.connectionState === "disconnected" ||
-    pc.connectionState === "closed"
-  ) {
-    delete peerConnectionsRef.current[peer.socketId];
-  }
-};
-  pc.onnegotiationneeded = async () => {
-  console.log("Negotiation triggered");
-};
-
-  peerConnectionsRef.current[peer.socketId] = pc;
-
-  if (window.localStream) {
-    const stream = window.localStream;
-
-stream.getTracks().forEach(track => {
-  pc.addTrack(track, stream);
-});
-await new Promise(r => setTimeout(r, 0));
-
-  }
-
-  pc.onicecandidate = (event) => {
-    if (event.candidate) {
-      socket.emit("signal", {
-        targetSocketId: peer.socketId,
-        signalData: {
-          type: "ice-candidate",
-          candidate: event.candidate
-        }
-      });
-    }
-  };
-
-  const offer = await pc.createOffer();
-  await pc.setLocalDescription(offer);
-
-  socket.emit("signal", {
-    targetSocketId: peer.socketId,
-    signalData: {
-      type: "offer",
-      sdp: offer
-    }
-  });
-
-  console.log("Sent offer to:", peer.name);
-});
-
-
-
+    /* ================= STATUS CONTROL (FIXED) ================= */
 
     const isApproved = room.approved?.find(p => p.name === name);
     const isWaiting = room.waiting?.find(p => p.name === name);
 
-    if (!name) return; // do nothing if user hasn't entered name yet
-if (isApproved) {
-  setStatus("joined");
-} else if (isWaiting && status !== "joined") {
-  setStatus("waiting");
-}
-connectHostToPeers();
+    if (!name) return;
+
+    if (isApproved) {
+      setStatus("joined");   // ✅ guest enters instantly after approval
+    } 
+    else if (isWaiting) {
+      setStatus("waiting");
+    }
+
+    /* ================= HOST CONNECTION LOGIC ================= */
+    if (isHost && mediaReadyRef.current) {
+      connectHostToPeers();
+    }
   });
 
   return () => {
     socket.off("room-state");
   };
+
 }, [socket, name]);
 
 
@@ -213,26 +146,19 @@ useEffect(() => {
     if (!pc || pc.connectionState === "closed") {
       console.log("Creating PC for incoming signal");
 
-      pc = new RTCPeerConnection();
+      pc = new RTCPeerConnection({ iceServers: [{ urls: "stun:stun.l.google.com:19302" }] });
       peerConnectionsRef.current[from] = pc;
-      pc.addTransceiver("video", { direction: "recvonly" });
-      pc.addTransceiver("audio", { direction: "recvonly" });
 
-     pc.ontrack = (event) => {
-  console.log("Guest received stream");
-
-  if (remoteVideoRef.current) {
-    const video = remoteVideoRef.current;
-
-    video.srcObject = event.streams[0];
-
-    video.onloadedmetadata = () => {
-      video.play().catch(err =>
-        console.log("Autoplay prevented:", err)
-      );
-    };
-  }
-};
+      pc.ontrack = (event) => {
+        console.log("Guest received stream track", event.track.kind);
+        setRemoteStream((prev) => {
+          if (prev) {
+            prev.addTrack(event.track);
+            return new MediaStream(prev.getTracks());
+          }
+          return new MediaStream([event.track]);
+        });
+      };
 
       pc.onicecandidate = (event) => {
         if (event.candidate) {
@@ -510,6 +436,9 @@ useEffect(() => {
   return () => clearInterval(interval);
 
 }, [socket, isHost]);
+
+
+// replaced guest-ready handling entirely with automatic host pairing on room-state
   /* ---------------- POLLING PARTICIPANTS ---------------- */
 
  async function startScreenShare() {
@@ -527,6 +456,15 @@ useEffect(() => {
     if (localVideoRef.current) {
       localVideoRef.current.srcObject =
         screenStream;
+    }
+
+    // 🔥 update window.localStream for new guests
+    if (window.localStream) {
+      const oldVideoTrack = window.localStream.getVideoTracks()[0];
+      if (oldVideoTrack) {
+        window.localStream.removeTrack(oldVideoTrack);
+      }
+      window.localStream.addTrack(screenTrack);
     }
 
     // 🔥 replace track for ALL guests
@@ -608,7 +546,7 @@ useEffect(() => {
     if (pc && pc.connectionState !== "closed")
       return;
 
-    pc = new RTCPeerConnection();
+    pc = new RTCPeerConnection({ iceServers: [{ urls: "stun:stun.l.google.com:19302" }] });
     peerConnectionsRef.current[
       peer.socketId
     ] = pc;
