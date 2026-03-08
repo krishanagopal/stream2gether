@@ -43,6 +43,10 @@ if (room) {
   if (approvedUser) {
     approvedUser.socketId = socket.id;
   }
+  const waitingUser = room.waiting.find(u => u.name === name);
+  if (waitingUser) {
+    waitingUser.socketId = socket.id;
+  }
 }
     console.log(`Socket ${socket.id} joined room ${roomId} as ${name}`);
 

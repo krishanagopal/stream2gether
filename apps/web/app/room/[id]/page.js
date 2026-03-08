@@ -10,8 +10,8 @@ export default function RoomPage() {
   const searchParams = useSearchParams();
   const hostName = searchParams.get("host");
 
-  // state
   const [name, setName] = useState("");
+  const [joinedName, setJoinedName] = useState("");
   const [status, setStatus] = useState("enter-name");
   const [error, setError] = useState("");
   const [participants, setParticipants] = useState([]);
@@ -86,8 +86,10 @@ const latestRoomRef = useRef(null);
       const data = await res.json();
 
       if (data.status === "waiting") {
+        setJoinedName(savedName);
         setStatus("waiting");
       } else {
+        setJoinedName(savedName);
         setStatus("joined");
       }
     } catch {
@@ -147,6 +149,7 @@ useEffect(() => {
       console.log("Creating PC for incoming signal");
 
       pc = new RTCPeerConnection({ iceServers: [{ urls: "stun:stun.l.google.com:19302" }] });
+      pc.queuedIceCandidates = [];
       peerConnectionsRef.current[from] = pc;
 
       pc.ontrack = (event) => {
@@ -179,6 +182,13 @@ useEffect(() => {
         new RTCSessionDescription(signalData.sdp)
       );
 
+      if (pc.queuedIceCandidates) {
+        for (let candidate of pc.queuedIceCandidates) {
+          try { await pc.addIceCandidate(candidate); } catch(e) { console.error("ICE Error", e); }
+        }
+        pc.queuedIceCandidates = [];
+      }
+
       const answer = await pc.createAnswer();
       await pc.setLocalDescription(answer);
 
@@ -199,6 +209,13 @@ useEffect(() => {
         new RTCSessionDescription(signalData.sdp)
       );
 
+      if (pc.queuedIceCandidates) {
+        for (let candidate of pc.queuedIceCandidates) {
+          try { await pc.addIceCandidate(candidate); } catch(e) { console.error("ICE Error", e); }
+        }
+        pc.queuedIceCandidates = [];
+      }
+
       console.log("Answer received");
     }
 
@@ -207,9 +224,13 @@ useEffect(() => {
       try {
         if (pc.remoteDescription) {
           await pc.addIceCandidate(signalData.candidate);
+        } else {
+          console.log("Queueing ICE candidate");
+          if (!pc.queuedIceCandidates) pc.queuedIceCandidates = [];
+          pc.queuedIceCandidates.push(signalData.candidate);
         }
-      } catch {
-        console.log("ICE skipped");
+      } catch (e) {
+        console.log("ICE Error", e);
       }
     }
   };
@@ -302,6 +323,7 @@ useEffect(() => {
     if (!hostName) return;
 
     setName(hostName);
+    setJoinedName(hostName);
     setStatus("joined");
   }, [hostName]);
 
@@ -338,9 +360,11 @@ useEffect(() => {
 
       if (data.status === "waiting") {
   localStorage.setItem(`watchparty-name-${params.id}`, name);
+  setJoinedName(name);
   setStatus("waiting");
 } else {
   localStorage.setItem("watchparty-name", name);
+  setJoinedName(name);
   setStatus("joined");
 }
 
@@ -366,7 +390,7 @@ useEffect(() => {
 
 
 useEffect(() => {
-  if (!name) return;
+  if (!joinedName) return;
 
   const s = io("http://localhost:4000");
 
@@ -379,7 +403,7 @@ s.on("connect", () => {
 
   s.emit("join-room", {
     roomId: params.id,
-    name,
+    name: joinedName,
   });
 
   setSocket(s);
@@ -393,7 +417,7 @@ s.emit("request-sync", {
   return () => {
     s.disconnect();
   };
-}, [params.id, name]);
+}, [params.id, joinedName]);
 
 
 useEffect(() => {
@@ -547,6 +571,7 @@ useEffect(() => {
       return;
 
     pc = new RTCPeerConnection({ iceServers: [{ urls: "stun:stun.l.google.com:19302" }] });
+    pc.queuedIceCandidates = [];
     peerConnectionsRef.current[
       peer.socketId
     ] = pc;

@@ -1,11 +1,13 @@
+import "./globals.css";
+
 export const metadata = {
-  title: "WatchParty",
+  title: "WatchParty - Daily Webpage",
 };
 
 export default function RootLayout({ children }) {
   return (
-    <html>
-      <body style={{ margin: 0, fontFamily: "sans-serif" }}>
+    <html lang="en">
+      <body>
         {children}
       </body>
     </html>
