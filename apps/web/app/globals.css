@@ -1,12 +1,25 @@
-@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Playfair+Display+SC:wght@700;900&family=Great+Vibes&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Ultra&family=Courier+Prime:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Sacramento&family=Pirata+One&family=Cinzel:wght@700;900&family=Playfair+Display+SC:wght@700;900&family=Great+Vibes&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Ultra&family=Courier+Prime:wght@400;700&family=Rye&display=swap');
 
 :root {
-  --ink-color: #1b1b1b; /* darker black/brown ink */
-  --ink-light: #2a1f1a;
-  --paper-bg: #efe2c4; /* deeper aged paper */
-  --paper-bg-light: #f4ecd8; /* lighter aged paper */
-  --border-color: #3a2c22; /* faded dark brown */
-  --faded-ink: #6b553c;
+  /* Core Newspaper Palette */
+  --ink-color: #120c08; 
+  --ink-light: #2c2017;
+  --paper-bg: #cda87a; 
+  --paper-bg-light: #dcb88e;
+  --border-color: #21130b; 
+  --faded-ink: #543f2a;
+  
+  /* Rusty Mechanical Palette (Video Share Style) */
+  --rust-base: #8b4513;
+  --rust-dark: #3e1f0b;
+  --rust-accent: #c05a1d;
+  --metal-dark: #1a1614;
+  --metal-light: #4a3f35;
+  --glow-orange: #ff7f24;
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {
@@ -20,6 +33,28 @@ body {
   font-family: 'Libre Baskerville', serif;
 }
 
+/* ==========================================================================
+   GLOBAL CINEMATIC EFFECTS (Surfing through the era)
+   ========================================================================== */
+
+.film-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 9999;
+  background-image: url('data:image/svg+xml;utf8,<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"><filter id="noiseFilter"><feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="3" stitchTiles="stitch"/></filter><rect width="100%" height="100%" filter="url(%23noiseFilter)" opacity="0.08"/></svg>');
+  box-shadow: inset 0 0 150px rgba(0,0,0,0.8); /* Deep vignette */
+  animation: film-jitter 0.1s infinite alternate;
+}
+
+@keyframes film-jitter {
+  0% { transform: translate(0, 0); opacity: 0.9; }
+  100% { transform: translate(-1px, 1px); opacity: 1; }
+}
+
 .newspaper-container {
   max-width: 1200px;
   width: 100%;
@@ -27,50 +62,79 @@ body {
   padding: 40px 60px;
   background-color: var(--paper-bg-light);
   
-  /* Increased paper grain and realistic texture */
+  /* Intense, physically destroyed texture: heavy grain, deep soot, harsh yellowing */
   background-image: 
-    radial-gradient(ellipse at center, rgba(0,0,0,0) 0%, rgba(0,0,0,0.1) 100%),
-    radial-gradient(circle at 15% 50%, rgba(58, 44, 34, 0.05) 0%, transparent 40%),
-    radial-gradient(circle at 85% 20%, rgba(58, 44, 34, 0.04) 0%, transparent 50%),
-    url('data:image/svg+xml;utf8,<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"><filter id="noiseFilter"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="4" stitchTiles="stitch"/></filter><rect width="100%" height="100%" filter="url(%23noiseFilter)" opacity="0.12"/></svg>');
+    repeating-linear-gradient(45deg, transparent, transparent 2px, rgba(0,0,0,0.03) 3px, transparent 4px),
+    repeating-linear-gradient(-45deg, transparent, transparent 5px, rgba(0,0,0,0.02) 6px, transparent 7px),
+    radial-gradient(ellipse at center, transparent 20%, rgba(33, 19, 11, 0.7) 100%), /* aggressive edge burn */
+    radial-gradient(circle at 10% 10%, rgba(110, 50, 26, 0.25) 0%, transparent 50%), /* giant corner rust */
+    radial-gradient(circle at 85% 90%, rgba(18, 12, 8, 0.3) 0%, transparent 60%), /* soot pile bottom right */
+    url('data:image/svg+xml;utf8,<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"><filter id="noiseFilter"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="6" stitchTiles="stitch"/></filter><rect width="100%" height="100%" filter="url(%23noiseFilter)" opacity="0.35"/></svg>'); /* heavy scratchy noise */
   
-  /* Natural aged paper borders with worn edges using double-lines */
-  border-top: 2px solid rgba(58, 44, 34, 0.6);
-  border-bottom: 3px solid rgba(58, 44, 34, 0.7);
-  border-left: 1px solid rgba(58, 44, 34, 0.5);
-  border-right: 2px solid rgba(58, 44, 34, 0.6);
-  border-radius: 2px 1px 3px 2px;
-  outline: 4px solid var(--border-color);
-  outline-offset: -5px;
-  box-shadow: 0 0 60px rgba(0,0,0,0.9), inset 0 0 50px rgba(58, 44, 34, 0.12);
+  /* Physically burnt away edges */
+  border-top: 4px solid rgba(18, 12, 8, 0.95);
+  border-bottom: 6px solid rgba(18, 12, 8, 0.95);
+  border-left: 3px solid rgba(18, 12, 8, 0.9);
+  border-right: 5px solid rgba(18, 12, 8, 0.95);
+  border-radius: 4px 6px 5px 3px / 5px 3px 4px 6px; /* organic wavy edge */
+  
+  /* Massive structural charring */
+  box-shadow: 
+    0 0 60px rgba(0,0,0,1), 
+    inset 0 0 160px rgba(18, 12, 8, 0.95), /* huge smoky vignette */
+    inset 0 0 45px rgba(0, 0, 0, 1), /* solid black edge char */
+    inset 8px 8px 20px rgba(0, 0, 0, 0.8),
+    inset -8px -8px 25px rgba(33, 19, 11, 0.9); /* deep burn eating in */
+  
   position: relative;
+  overflow: hidden; 
 }
 
-/* Distressed ink edge effect */
+/* Large central/flowing soot and rust stains */
 .newspaper-container::before {
   content: "";
   position: absolute;
-  top: 0; left: 0; right: 0; bottom: 0;
-  box-shadow: inset 0 0 20px rgba(27, 27, 27, 0.15);
+  top: -20%; left: -10%;
+  width: 800px; height: 600px;
+  background: radial-gradient(ellipse, rgba(110, 50, 26, 0.45) 0%, rgba(18, 12, 8, 0.3) 40%, transparent 75%);
+  border-radius: 40% 70% 50% 60%;
   pointer-events: none;
+  filter: blur(25px);
+  mix-blend-mode: multiply;
+  z-index: 2; /* pulls soot over some content */
+}
+
+/* Secondary brutal burn stain sweeping inward */
+.newspaper-container::after {
+  content: "";
+  position: absolute;
+  top: 10%; right: -15%;
+  width: 500px; height: 700px;
+  background: radial-gradient(circle, rgba(18, 12, 8, 0.8) 0%, rgba(110, 50, 26, 0.5) 30%, transparent 70%);
+  border-radius: 30% 60% 40% 70%;
+  pointer-events: none;
+  filter: blur(20px);
+  mix-blend-mode: multiply;
+  z-index: 2;
 }
 
 /* --- NAVBAR --- */
 .newspaper-nav {
   text-align: center;
   margin-bottom: 25px;
+  position: relative;
+  z-index: 1; /* Stay above stains */
 }
 
 .masthead-title {
-  font-family: 'Cinzel', serif;
-  font-size: 5.5rem;
-  font-weight: 900;
-  margin: 15px 0;
+  font-family: 'Sacramento', cursive;
+  font-size: 8rem;
+  font-weight: 400; /* Cursive is best unbolded */
+  margin: 10px 0;
   line-height: 1;
   color: var(--ink-color);
-  letter-spacing: 4px;
-  text-transform: uppercase;
-  text-shadow: 1px 1px 0 rgba(58, 44, 34, 0.2);
+  letter-spacing: 2px;
+  text-shadow: 2px 2px 0 rgba(58, 44, 34, 0.2);
 }
 
 .nav-sub {
@@ -89,17 +153,55 @@ body {
 .newspaper-hero {
   text-align: center;
   margin-bottom: 35px;
+  position: relative;
+  z-index: 1;
 }
 
 .hero-headline {
-  font-family: 'Ultra', serif;
+  font-family: 'Rye', serif;
   font-weight: 400;
-  font-size: 4.5rem;
-  margin: 15px 0;
+  font-size: 5.5rem;
+  margin: 15px 0 5px 0;
   line-height: 1.1;
-  letter-spacing: 1px;
-  text-transform: uppercase;
+  letter-spacing: 2px;
   color: var(--ink-color);
+  text-transform: uppercase;
+  /* Sketchy, hatched 3D block shading effect */
+  text-shadow: 
+    -1px -1px 0 var(--paper-bg),
+    1px 1px 0 var(--ink-color),
+    2px 2px 0 var(--ink-color),
+    3px 3px 0 var(--paper-bg),
+    4px 4px 0 var(--ink-color),
+    5px 5px 0 var(--ink-color),
+    6px 6px 0 var(--paper-bg),
+    7px 7px 0 var(--ink-light),
+    10px 10px 15px rgba(58, 44, 34, 0.6);
+}
+
+/* --- CINEMATIC SURFING REVEALS --- */
+/* Base initial state for all directional reveals */
+.retro-reveal-left,
+.retro-reveal-right,
+.retro-reveal-up {
+  opacity: 0;
+  filter: blur(8px) contrast(1.5) sepia(0.8);
+  will-change: opacity, transform, filter;
+  transition: all 1.2s cubic-bezier(0.16, 1, 0.3, 1); /* Elegant, slow ease-out */
+}
+
+/* Starting positions */
+.retro-reveal-left { transform: translateX(-80px) rotate(-3deg); }
+.retro-reveal-right { transform: translateX(80px) rotate(3deg); }
+.retro-reveal-up { transform: translateY(60px) scale(0.95); }
+
+/* The "In View" resolved state */
+.retro-reveal-left.is-visible,
+.retro-reveal-right.is-visible,
+.retro-reveal-up.is-visible {
+  opacity: 1;
+  transform: translate(0, 0) rotate(0deg) scale(1);
+  filter: blur(0px) contrast(1) sepia(0);
 }
 
 .cursive-subline {
@@ -132,7 +234,21 @@ body {
 .newspaper-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 20px; /* Reduced gap so cards aren't massive */
+  gap: 20px;
+  position: relative;
+  z-index: 1;
+}
+
+/* Overall scratchy damage overlay applied directly over the content */
+.newspaper-grid::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  pointer-events: none;
+  background-image: 
+    repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(18,12,8,0.02) 11px, transparent 15px),
+    repeating-linear-gradient(-30deg, transparent, transparent 20px, rgba(18,12,8,0.01) 21px, transparent 26px);
+  z-index: 10;
 }
 
 .newspaper-section {
@@ -144,28 +260,38 @@ body {
   align-items: center;
 }
 
-/* Distressed inner border */
+/* Distressed inner border with rusty smudges */
 .newspaper-section::before {
   content: "";
   position: absolute;
   top: 0; left: 0; right: 0; bottom: 0;
   border: 2px solid var(--ink-color);
-  box-shadow: inset 0 0 0 1px var(--border-color);
+  box-shadow: inset 0 0 3px rgba(138, 72, 43, 0.5), inset 0 0 0 1px var(--border-color);
   pointer-events: none;
-  opacity: 0.9;
+  opacity: 0.85;
+  border-radius: 1px 2px 1px 3px; /* subtle irregularity */
 }
 
-/* Inverted black strip for Latest News */
+/* Scratched Burned Ribbon */
 .section-title-inverted {
   background-color: var(--ink-color);
+  background-image: 
+    url('data:image/svg+xml;utf8,<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"><filter id="noiseFilter"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="3" stitchTiles="stitch"/></filter><rect width="100%" height="100%" filter="url(%23noiseFilter)" opacity="0.35"/></svg>'),
+    repeating-linear-gradient(45deg, transparent, transparent 2px, rgba(255,255,255,0.05) 3px, transparent 4px),
+    radial-gradient(circle at 10% 50%, rgba(18,12,8,0.95) 0%, transparent 60%), /* left end heavily burnt */
+    radial-gradient(circle at 90% 50%, rgba(18,12,8,0.95) 0%, transparent 60%), /* right end heavily burnt */
+    radial-gradient(circle at 50% 50%, rgba(0,0,0,0) 0%, rgba(0,0,0,0.9) 100%);
   color: var(--paper-bg-light);
-  width: 100%;
-  padding: 8px 0;
+  width: 106%; /* Extend slightly past container */
+  margin-left: -3%;
+  padding: 10px 0;
   margin-bottom: 15px;
   position: relative;
-  /* Distressed look */
-  border-top: 1px solid var(--ink-light);
-  border-bottom: 2px solid #000;
+  clip-path: polygon(0% 4%, 100% 2%, 96% 51%, 100% 97%, 1% 96%, 4% 48%); /* Naturally torn/frayed ends */
+  box-shadow: inset 0 0 25px rgba(0,0,0,1);
+  border-top: 1px solid rgba(255,255,255,0.08);
+  border-radius: 2px 3px 1px 4px; /* organic inner shape */
+  opacity: 0.95; /* extremely subtle heat fade */
 }
 
 /* Wanted section title styling */
@@ -220,6 +346,7 @@ body {
   line-height: 1.6;
   margin-bottom: 15px;
   color: var(--ink-color);
+  opacity: 0.85; /* faded from heat */
 }
 
 .mystery-bg {
@@ -326,18 +453,32 @@ body {
 .newspaper-footer {
   margin-top: 40px;
   text-align: center;
-  border-top: 4px solid var(--ink-color);
+  border-top: 4px solid rgba(44, 32, 23, 0.85); /* scorched */
   padding-top: 20px;
+  position: relative;
+  z-index: 1;
 }
 
+/* Scratched Burned Ribbon Banner */
 .footer-banner {
   background-color: var(--ink-color);
+  background-image: 
+    url('data:image/svg+xml;utf8,<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"><filter id="noiseFilter"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="3" stitchTiles="stitch"/></filter><rect width="100%" height="100%" filter="url(%23noiseFilter)" opacity="0.35"/></svg>'),
+    repeating-linear-gradient(45deg, transparent, transparent 2px, rgba(255,255,255,0.04) 3px, transparent 4px),
+    radial-gradient(circle at 5% 50%, rgba(18,12,8,1) 0%, transparent 60%), /* heavy burn left edge */
+    radial-gradient(circle at 95% 50%, rgba(18,12,8,1) 0%, transparent 60%), /* heavy burn right edge */
+    radial-gradient(ellipse at center, rgba(0,0,0,0) 0%, rgba(0,0,0,0.95) 100%);
   color: var(--paper-bg-light);
-  padding: 15px 0;
+  padding: 20px 0;
   margin-bottom: 25px;
-  box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
-  border-top: 2px solid var(--ink-light);
-  border-bottom: 2px solid var(--ink-light);
+  box-shadow: 0 8px 20px rgba(0,0,0,0.6), inset 0 0 35px rgba(0,0,0,1);
+  position: relative;
+  width: 108%;
+  margin-left: -4%;
+  clip-path: polygon(2% 3%, 98% 1%, 100% 48%, 97% 98%, 1% 99%, 0% 52%); /* Irregular wavy ribbon tails */
+  border-top: 1px solid rgba(255,255,255,0.08);
+  border-bottom: 2px solid rgba(0,0,0,0.9);
+  border-radius: 4px 2px 3px 5px;
 }
 
 .footer-headline {
@@ -387,5 +528,395 @@ body {
     padding: 20px;
     -webkit-mask-image: none; /* Remove ragged edges on mobile to save space */
     mask-image: none;
+  }
+}
+
+/* ==========================================================================
+   RUSTY MECHANICAL SECTION STYLES (Product Demo / Roadmap / FAQ)
+   ========================================================================== */
+
+.rusty-panel {
+  background-color: var(--metal-dark);
+  background-image: 
+    repeating-linear-gradient(45deg, transparent, transparent 5px, rgba(139, 69, 19, 0.05) 6px, transparent 10px),
+    radial-gradient(circle at center, rgba(139, 69, 19, 0.15) 0%, transparent 80%),
+    url('data:image/svg+xml;utf8,<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"><filter id="noiseFilter"><feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="4" stitchTiles="stitch"/></filter><rect width="100%" height="100%" filter="url(%23noiseFilter)" opacity="0.15"/></svg>');
+  border: 4px solid var(--rust-dark);
+  border-radius: 8px;
+  padding: 25px;
+  position: relative;
+  box-shadow: 
+    inset 0 0 30px rgba(0,0,0,0.8),
+    0 8px 25px rgba(0,0,0,0.6);
+  margin-top: 40px;
+  color: var(--paper-bg-light);
+}
+
+.rusty-panel::before {
+  content: '';
+  position: absolute;
+  top: 4px; left: 4px; right: 4px; bottom: 4px;
+  border: 2px solid rgba(255,255,255,0.05);
+  pointer-events: none;
+  border-radius: 4px;
+}
+
+/* Rivets for the panel corners */
+.rivet {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  background: var(--metal-light);
+  border-radius: 50%;
+  box-shadow: inset -2px -2px 4px rgba(0,0,0,0.8), inset 2px 2px 4px rgba(255,255,255,0.2), 2px 2px 5px rgba(0,0,0,0.5);
+}
+.rivet.tl { top: 10px; left: 10px; }
+.rivet.tr { top: 10px; right: 10px; }
+.rivet.bl { bottom: 10px; left: 10px; }
+.rivet.br { bottom: 10px; right: 10px; }
+
+.section-divider-metal {
+  height: 8px;
+  background: linear-gradient(to bottom, var(--metal-dark), var(--metal-light), var(--metal-dark));
+  border-top: 2px solid rgba(255,255,255,0.1);
+  border-bottom: 2px solid rgba(0,0,0,0.8);
+  margin: 30px -25px; /* Pull out to edges of rusty panel */
+  box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+  position: relative;
+}
+
+/* Internal panel title like "Recommended Videos" */
+.metallic-header {
+  font-family: 'Ultra', serif;
+  font-size: 1.8rem;
+  color: var(--paper-bg-light);
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  margin: 0 0 15px 0;
+  text-shadow: 2px 2px 4px rgba(0,0,0,0.8), -1px -1px 0 rgba(255,255,255,0.1);
+}
+
+.glowing-text {
+  font-family: 'Rye', serif;
+  color: var(--glow-orange);
+  text-shadow: 
+    0 0 5px var(--glow-orange),
+    0 0 15px var(--glow-red),
+    0 0 25px var(--rust-base);
+}
+
+/* --- Product Demo Block (The "Retro Drive-In" screen) --- */
+.demo-screen {
+  background: #050302;
+  border: 6px solid #1a1614;
+  border-radius: 6px;
+  padding: 20px;
+  text-align: center;
+  position: relative;
+  box-shadow: inset 0 0 40px rgba(0,0,0,1), 0 5px 15px rgba(0,0,0,0.5);
+  overflow: hidden;
+}
+
+/* CRT style scanlines over the demo */
+.demo-screen::after {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+  background-size: 100% 4px, 6px 100%;
+  pointer-events: none;
+}
+
+.demo-title {
+  font-family: 'Rye', serif;
+  font-size: 3.5rem;
+  margin: 10px 0;
+  color: #fff;
+}
+
+.demo-tagline {
+  font-family: 'Courier Prime', monospace;
+  font-size: 1.1rem;
+  color: #aaa;
+  margin-bottom: 20px;
+}
+
+.demo-stats {
+  display: flex;
+  justify-content: space-around;
+  background: rgba(255,255,255,0.03);
+  padding: 10px;
+  border-top: 1px dashed rgba(255,255,255,0.1);
+  border-bottom: 1px dashed rgba(255,255,255,0.1);
+  font-family: 'Courier Prime', monospace;
+  font-weight: bold;
+  font-size: 1rem;
+}
+
+/* --- Roadmap / List Items --- */
+.roadmap-list {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.roadmap-item {
+  display: flex;
+  align-items: center;
+  background: rgba(0,0,0,0.2);
+  border-bottom: 2px solid var(--rust-dark);
+  padding: 15px;
+  border-radius: 4px;
+  transition: background 0.2s;
+}
+
+.roadmap-item:hover {
+  background: rgba(0,0,0,0.3);
+}
+
+.roadmap-icon {
+  width: 60px;
+  height: 40px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  margin-right: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Ultra', serif;
+  font-size: 1.5rem;
+  color: var(--rust-accent);
+  box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
+}
+
+.roadmap-content h4 {
+  font-family: 'Ultra', serif;
+  font-size: 1.3rem;
+  margin: 0 0 5px 0;
+  color: var(--paper-bg);
+}
+
+.roadmap-content p {
+  font-family: 'Courier Prime', monospace;
+  font-size: 0.95rem;
+  margin: 0;
+  color: #999;
+}
+
+/* --- Heavy Buttons (FAQ / Actions) --- */
+.vintage-button-heavy {
+  font-family: 'Ultra', serif;
+  font-size: 1.2rem;
+  text-transform: uppercase;
+  background: linear-gradient(to bottom, var(--rust-base), var(--rust-dark));
+  color: var(--paper-bg-light);
+  border: 4px solid #1a1614;
+  border-radius: 6px;
+  padding: 12px 25px;
+  cursor: pointer;
+  box-shadow: inset 2px 2px 5px rgba(255,255,255,0.2), inset -2px -2px 5px rgba(0,0,0,0.5), 3px 3px 8px rgba(0,0,0,0.6);
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+  transition: all 0.1s;
+}
+
+.vintage-button-heavy:hover {
+  background: linear-gradient(to bottom, var(--rust-accent), var(--rust-base));
+  transform: translateY(1px);
+  box-shadow: inset 2px 2px 5px rgba(255,255,255,0.3), inset -2px -2px 5px rgba(0,0,0,0.6), 2px 2px 5px rgba(0,0,0,0.5);
+}
+
+.vintage-button-heavy:active {
+  transform: translateY(3px);
+  box-shadow: inset 2px 2px 8px rgba(0,0,0,0.8), 0 0 0 rgba(0,0,0,0);
+}
+
+/* FAQ Row */
+.faq-row {
+  display: flex;
+  gap: 15px;
+  justify-content: space-around;
+  margin-top: 20px;
+}
+
+/* ==========================================================================
+   VINTAGE TV CARDS & SIGNAL ANIMATION
+   ========================================================================== */
+
+/* The outer physical TV casing */
+.vintage-tv-set {
+  background-color: var(--metal-dark);
+  background-image: 
+    repeating-linear-gradient(45deg, transparent, transparent 5px, rgba(0, 0, 0, 0.2) 6px, transparent 10px);
+  border: 8px solid var(--rust-dark);
+  border-radius: 12px;
+  padding: 15px;
+  box-shadow: 
+    inset 0 0 20px rgba(0,0,0,0.8),
+    0 10px 30px rgba(0,0,0,0.7);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  border-top-color: #5c3826; /* Slight woodgrain/lighter plastic look above */
+  border-bottom-color: #2b170c;
+  width: 100%;
+}
+
+.vintage-tv-set::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  box-shadow: inset 0 0 0 2px rgba(255,255,255,0.05);
+  pointer-events: none;
+  border-radius: 4px;
+}
+
+/* The curved CRT glass area */
+.tv-screen {
+  background: #050302;
+  border: 10px solid #111;
+  border-radius: 8px 8px 12px 12px;
+  padding: 10px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: inset 0 0 30px rgba(0,0,0,1), 0 4px 10px rgba(0,0,0,0.8);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+}
+
+.tv-screen::after {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.04), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.04));
+  background-size: 100% 4px, 6px 100%;
+  pointer-events: none;
+  box-shadow: inset 0 0 20px rgba(0,0,0,0.8);
+  border-radius: inherit;
+  z-index: 10;
+}
+
+/* Internal text overrides to look good on the dark TV screen */
+.tv-screen .sub-headline {
+  color: #fff;
+  text-shadow: 0 0 5px rgba(255,255,255,0.5);
+  margin-top: 10px;
+  z-index: 2;
+  position: relative;
+}
+
+.tv-screen .body-text, 
+.tv-screen p {
+  color: #ccc;
+  text-shadow: 1px 1px 0 #000;
+  z-index: 2;
+  position: relative;
+}
+
+.tv-screen .graphic-placeholder {
+  z-index: 2;
+  position: relative;
+}
+.tv-screen .section-title-inverted,
+.tv-screen .section-title-wanted {
+  z-index: 2;
+  position: relative;
+  background-image: none;
+  background-color: transparent;
+  box-shadow: none;
+  border: none;
+  color: #fff;
+}
+.tv-screen .section-title-inverted h3,
+.tv-screen .section-title-wanted h3 {
+  color: var(--glow-orange);
+  text-shadow: 0 0 10px var(--glow-red);
+}
+
+
+/* Lower panel containing dials/buttons */
+.tv-controls {
+  padding: 15px 5px 5px 5px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  border-top: 3px solid #111;
+  margin-top: 10px;
+  background: linear-gradient(to bottom, var(--metal-dark), var(--metal-light));
+  border-radius: 0 0 4px 4px;
+}
+
+.tv-controls .vintage-form {
+  margin-top: 0;
+}
+
+.tv-controls .input-vintage {
+  background: rgba(0,0,0,0.3);
+  color: var(--glow-orange);
+  border-color: #000;
+  box-shadow: inset 0 2px 5px rgba(0,0,0,0.8);
+  text-shadow: 0 0 5px rgba(255, 127, 36, 0.2);
+}
+.tv-controls .input-vintage:focus {
+  background: rgba(0,0,0,0.5);
+  box-shadow: inset 0 2px 5px rgba(0,0,0,0.8), 0 0 0 2px var(--glow-orange);
+}
+
+.tv-controls .btn-vintage {
+  background: linear-gradient(to bottom, var(--rust-dark), #1a0d05);
+  color: #ddd;
+  border-color: #000;
+  box-shadow: inset 1px 1px 2px rgba(255,255,255,0.1), 2px 2px 5px rgba(0,0,0,0.8);
+}
+.tv-controls .btn-vintage:hover:not(:disabled) {
+  background: linear-gradient(to bottom, var(--rust-base), var(--rust-dark));
+  color: #fff;
+}
+
+/* Signal Loss Scroll Animation */
+.scroll-signal-loss {
+  opacity: 0;
+  filter: contrast(5) brightness(2) invert(1) grayscale(1);
+  transform: skewX(15deg) scaleY(0.1);
+  will-change: opacity, transform, filter;
+}
+
+.scroll-signal-loss.is-visible {
+  animation: regain-signal 1.2s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+
+@keyframes regain-signal {
+  0% {
+    opacity: 0;
+    transform: skewX(20deg) scaleY(0.1) translateY(-100px);
+    filter: contrast(4) brightness(1.5) grayscale(1) invert(0.2);
+  }
+  15% {
+    opacity: 1;
+    transform: skewX(-15deg) scaleY(0.5) translateY(20px);
+    filter: contrast(3) brightness(2) grayscale(0.8) hue-rotate(90deg);
+  }
+  30% {
+    transform: skewX(10deg) scaleY(0.8) translateY(-10px);
+    filter: contrast(2) brightness(1.2) grayscale(0.5) hue-rotate(-45deg);
+  }
+  45% {
+    transform: skewX(-5deg) scaleY(0.95) translateY(5px);
+    filter: contrast(1.5) brightness(1.1) grayscale(0.2);
+  }
+  60% {
+    transform: skewX(2deg) scaleY(1.02) translateY(-2px);
+    filter: contrast(1.1) brightness(1) grayscale(0);
+  }
+  80% {
+    transform: skewX(-1deg) scaleY(0.99) translateY(1px);
+    filter: contrast(1) brightness(1) grayscale(0);
+  }
+  100% {
+    opacity: 1;
+    transform: skewX(0deg) scaleY(1) translateY(0);
+    filter: contrast(1) brightness(1) grayscale(0);
   }
 }
