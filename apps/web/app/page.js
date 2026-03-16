@@ -1,36 +1,64 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
-import Image from "next/image";
+import { useState, useEffect, useRef } from "react";
 
 export default function Home() {
   const router = useRouter();
-  
+
   // Create Room State
   const [hostName, setHostName] = useState("");
   const [isCreating, setIsCreating] = useState(false);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
   // Join Room State
   const [roomId, setRoomId] = useState("");
   const [guestName, setGuestName] = useState("");
   const [joinError, setJoinError] = useState("");
   const [isJoining, setIsJoining] = useState(false);
+  const [isJoinModalOpen, setIsJoinModalOpen] = useState(false);
 
-  // Cinematic Surfing Reveal Effect
+  const [openFaq, setOpenFaq] = useState(null);
+
+  // Custom Cursor trailing effect
+  const cursorRef = useRef(null);
+  
   useEffect(() => {
+    window.scrollTo(0, 0);
+
+    // Scroll Animation Observer Setup
+    const revealElements = document.querySelectorAll('.reveal');
+    
     const observer = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
+      entries.forEach((entry) => {
         if (entry.isIntersecting) {
-          entry.target.classList.add('is-visible');
+          entry.target.classList.add('active');
         }
       });
-    }, { threshold: 0.1 });
+    }, {
+      rootMargin: '0px 0px -50px 0px',
+      threshold: 0.1
+    });
 
-    const hiddenElements = document.querySelectorAll('.retro-reveal-left, .retro-reveal-right, .retro-reveal-up, .scroll-signal-loss');
-    hiddenElements.forEach(el => observer.observe(el));
+    revealElements.forEach((el) => observer.observe(el));
 
-    return () => observer.disconnect();
+    // Custom Cursor tracking
+    const handleMouseMove = (e) => {
+      if (cursorRef.current) {
+        // Adding a slight delay/smoothness to the follower
+        cursorRef.current.animate({
+          left: `${e.clientX}px`,
+          top: `${e.clientY}px`
+        }, { duration: 500, fill: "forwards", easing: "ease-out" });
+      }
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+
+    return () => {
+      revealElements.forEach((el) => observer.unobserve(el));
+      window.removeEventListener('mousemove', handleMouseMove);
+    };
   }, []);
 
   async function handleCreateRoom(e) {
@@ -59,7 +87,6 @@ export default function Home() {
     setIsJoining(true);
 
     try {
-      // Just check if room exists before routing
       const check = await fetch(`http://localhost:4000/rooms/${roomId}`);
       if (!check.ok) {
         setJoinError("Room Not Found! Check the ID.");
@@ -67,263 +94,417 @@ export default function Home() {
         return;
       }
       
-      // Store name for the waiting room flow in page.js
       localStorage.setItem(`watchparty-name-${roomId}`, guestName);
       router.push(`/room/${roomId}`);
     } catch (err) {
-      setJoinError("Failed to reach telegraph office.");
+      setJoinError("Failed to connect to the server.");
       setIsJoining(false);
     }
   }
 
+  const toggleFaq = (index) => {
+    if (openFaq === index) setOpenFaq(null);
+    else setOpenFaq(index);
+  };
+
   return (
-    <>
-      {/* Global Cinematic Filter Overlay */}
-      <div className="film-overlay"></div>
+    <div className="relative min-h-screen text-[var(--color-newspaper-ink)] selection:bg-[var(--color-newspaper-rust)] selection:text-[var(--color-newspaper-bg)] overflow-x-hidden font-sans burnt-edges px-4 py-4 md:px-8 md:py-8 transition-all cursor-crosshair">
       
-      <div className="newspaper-container">
-      {/* NAVBAR */}
-      <nav className="newspaper-nav retro-reveal-up">
-        <div className="thin-divider"></div>
-        <div className="thin-divider" style={{ marginTop: '2px', marginBottom: '10px' }}></div>
-        <h1 className="masthead-title">𝔗𝔥𝔢 𝔇𝔞𝔦𝔩𝔶 𝔚𝔢𝔟𝔭𝔞𝔤𝔢</h1>
-        <div className="thin-divider"></div>
-        <div className="nav-sub">
-          <span>AUTHENTIC SITE!</span>
-          <span>★</span>
-          <span>EST. {new Date().getFullYear()}</span>
-          <span>★</span>
-          <span>WORLD WIDE WEB</span>
-        </div>
-        <div className="thick-line" style={{ marginTop: '10px' }}></div>
-      </nav>
+      {/* CUSTOM CURSOR FOLLOWER - Inky glowing spotlight effect */}
+      <div 
+        ref={cursorRef} 
+        className="fixed pointer-events-none z-[999] w-64 h-64 -translate-x-1/2 -translate-y-1/2 rounded-full mix-blend-multiply opacity-30"
+        style={{ background: 'radial-gradient(circle, rgba(139,58,32,0.8) 0%, rgba(43,29,20,0) 70%)' }}
+      />
 
-      {/* HERO SECTION */}
-      <header className="newspaper-hero">
-        <h2 className="hero-headline retro-reveal-up" style={{ transitionDelay: "0.1s" }}>Welcome to Our Website!</h2>
-        <div className="cursive-subline retro-reveal-up" style={{ transitionDelay: "0.3s" }}>The Best Place on the Internet!</div>
-        <div className="thick-line retro-reveal-up" style={{ marginTop: '20px', transitionDelay: "0.5s" }}></div>
-      </header>
+      {/* Wrapper to contain content within the burnt edges */}
+      <div className="relative z-10 w-full max-w-7xl mx-auto border-4 border-[var(--color-newspaper-ink)] p-1 md:p-2 bg-transparent shadow-[8px_8px_0_var(--color-newspaper-burn)] backdrop-blur-[2px]">
+        <div className="border-2 border-[var(--color-newspaper-ink)] border-dashed p-4 md:p-8 bg-transparent">
 
-      {/* MAIN CONTENT GRID */}
-      <main className="newspaper-grid">
-
-        
-        {/* LEFT COLUMN: CREATE ROOM (VINTAGE TV) */}
-        <div className="vintage-tv-set scroll-signal-loss" style={{ transitionDelay: "0.1s" }}>
-          <div className="tv-screen">
-            <div className="section-title-inverted latest-news-title">
-              <h3>LATEST NEWS!</h3>
-            </div>
-            <h4 className="sub-headline">= Read All About It! =</h4>
-            
-            <div className="graphic-placeholder">
-              <Image src="/vintage_megaphone.png" alt="Vintage Megaphone" width={300} height={200} style={{ objectFit: 'contain', filter: 'drop-shadow(0 0 10px rgba(255,255,255,0.2))' }} />
+          {/* NEWSPAPER HEADER */}
+          <header className="w-full flex flex-col items-center justify-center border-b-4 border-double border-[var(--color-newspaper-ink)] pb-6 mb-12">
+            <div className="flex justify-between w-full text-sm font-bold uppercase tracking-widest border-b-2 border-[var(--color-newspaper-ink)] pb-2 mb-6">
+               <span>Vol. I — No. 1</span>
+               <span className="font-[family-name:var(--font-typewriter)]">Est. 2026</span>
+               <span>The Daily Sync</span>
             </div>
             
-            <p className="body-text" style={{ fontStyle: "italic", textAlign: "center", marginBottom: "0" }}>
-              Exciting Updates & Information<br/>Start your own private broadcast today.
-            </p>
-          </div>
-          
-          <div className="tv-controls">
-            <form className="vintage-form" onSubmit={handleCreateRoom} style={{ width: '100%' }}>
-              <input
-                className="input-vintage"
-                value={hostName}
-                onChange={(e) => setHostName(e.target.value)}
-                placeholder="Enter Host Name..."
-                maxLength={20}
-                required
-              />
-              <button className="btn-vintage" type="submit" disabled={!hostName || isCreating} style={{ width: '90%' }}>
-                {isCreating ? "TUNING..." : "BROADCAST"}
-              </button>
-            </form>
-          </div>
-        </div>
-
-        {/* RIGHT COLUMN: JOIN ROOM (VINTAGE TV) */}
-        <div className="vintage-tv-set scroll-signal-loss" style={{ transitionDelay: "0.3s" }}>
-          <div className="tv-screen">
-            <div className="section-title-wanted">
-              <h3>WANTED</h3>
-            </div>
-            <h4 className="sub-headline">= JOIN US NOW! =</h4>
-            <p className="cursive-subline" style={{ fontSize: "1.8rem", margin: "0", color: "#fff", textShadow: "0 0 5px rgba(255,255,255,0.5)" }}>Become a Member!</p>
+            <h1 className="text-6xl md:text-8xl font-black tracking-tight flex items-center gap-1 group mb-4 uppercase hover:scale-105 transition-transform duration-500" style={{ textShadow: "4px 4px 0px var(--color-newspaper-rust)"}}>
+              <span className="group-hover:motion-preset-wobble motion-duration-500">Watch</span>
+              <span className="text-[var(--color-newspaper-burn)]">Party</span>
+            </h1>
             
-            <div className="graphic-placeholder">
-              <Image src="/wanted_cowboy.png" alt="Wanted Cowboy" width={300} height={200} style={{ objectFit: 'contain', filter: 'drop-shadow(0 0 10px rgba(255,255,255,0.2))' }} />
+            <div className="flex flex-wrap justify-center gap-6 md:gap-10 text-xl font-bold uppercase tracking-widest border-y-2 border-[var(--color-newspaper-ink)] py-3 w-full">
+              <a href="#features" className="hover:text-[var(--color-newspaper-rust)] hover:-translate-y-1 transition-transform relative group">
+                Features
+                <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-[var(--color-newspaper-rust)] transition-all group-hover:w-full"></span>
+              </a>
+              <span>★</span>
+              <a href="#how-it-works" className="hover:text-[var(--color-newspaper-rust)] hover:-translate-y-1 transition-transform relative group">
+                How it Works
+                <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-[var(--color-newspaper-rust)] transition-all group-hover:w-full"></span>
+              </a>
+              <span>★</span>
+              <a href="#faq" className="hover:text-[var(--color-newspaper-rust)] hover:-translate-y-1 transition-transform relative group">
+                FAQ
+                <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-[var(--color-newspaper-rust)] transition-all group-hover:w-full"></span>
+              </a>
             </div>
-          </div>
+          </header>
 
-          <div className="tv-controls">
-            <form className="vintage-form" onSubmit={handleJoinRoom} style={{ width: '100%' }}>
-              <input
-                className="input-vintage"
-                value={guestName}
-                onChange={(e) => setGuestName(e.target.value)}
-                placeholder="Your Alias..."
-                maxLength={20}
-                style={{ marginBottom: "10px" }}
-                required
-              />
-              <input
-                className="input-vintage"
-                value={roomId}
-                onChange={(e) => setRoomId(e.target.value)}
-                placeholder="Channel ID..."
-                maxLength={10}
-                required
-              />
+          <main className="w-full flex flex-col items-center">
+            
+            {/* ================= HERO SECTION ================= */}
+            <section className="relative w-full px-2 pt-10 pb-20 flex flex-col items-center text-center">
               
-              {joinError && <p style={{ color: "darkred", margin: "5px 0" }}>{joinError}</p>}
+              {/* FLOATERS (Ink splats / stars) */}
+              <div className="absolute top-0 left-[15%] text-4xl motion-preset-oscillate motion-duration-2000 opacity-60 z-0 hover:scale-150 transition-transform">★</div>
+              <div className="absolute top-20 right-[10%] text-5xl motion-preset-bounce motion-duration-3000 opacity-70 z-0 delay-150 rusty-text hover:rotate-90 transition-transform cursor-pointer">❀</div>
+              <div className="absolute top-[50%] left-[5%] text-3xl motion-preset-pulse motion-duration-2000 opacity-60 z-0">✦</div>
+              <div className="absolute bottom-0 right-[20%] text-6xl motion-preset-wobble motion-duration-2000 opacity-80 z-0 delay-300">✶</div>
+
+              {/* HEADLINE */}
+              <h2 className="text-5xl md:text-7xl font-bold tracking-tight mb-8 motion-preset-slide-up motion-duration-1000 z-10" style={{ textShadow: "2px 2px 0px rgba(0,0,0,0.2)" }}>
+                Watch Together. <br className="md:hidden" /> Feel Together.
+              </h2>
               
-              <button className="btn-vintage" type="submit" disabled={!roomId || !guestName || isJoining} style={{ width: '90%' }}>
-                {isJoining ? "CONNECTING..." : "TUNE IN"}
-              </button>
-            </form>
-          </div>
-        </div>
+              {/* SUBHEADLINE */}
+              <p className="text-2xl font-bold mb-12 max-w-2xl motion-preset-fade motion-delay-300 motion-duration-1000 z-10 border-l-4 border-[var(--color-newspaper-rust)] pl-6 text-left" style={{ fontStyle: "italic" }}>
+                "Sync movies, chat live, and share reactions in real time." — <span className="font-[family-name:var(--font-typewriter)] text-lg">The Editors</span>
+              </p>
 
-        {/* BOTTOM LEFT: SPECIAL OFFERS */}
-        <section className="newspaper-section retro-reveal-left" style={{ transitionDelay: "0.1s" }}>
-          <div className="divider-line" style={{ width: "80%", marginBottom: "15px" }}></div>
-          <div className="section-title-standard">
-            <h3>SPECIAL OFFERS!</h3>
-          </div>
-          <h4 className="sub-headline">= Don't Miss Out! =</h4>
-          <p className="cursive-subline" style={{ fontSize: "1.8rem", margin: "10px 0" }}>Big Deals & Discounts</p>
-          <div className="graphic-placeholder">
-            <Image src="/special_offers_badge.png" alt="Special Offers Badge" width={200} height={150} style={{ objectFit: 'contain', mixBlendMode: 'multiply', filter: 'contrast(1.2)' }} />
-          </div>
-          <button className="btn-small-vintage" type="button" style={{ border: "3px solid var(--ink-color)", borderRadius: "8px", padding: "8px 25px", marginTop: "auto" }}>SEE OFFERS</button>
-        </section>
+              {/* ACTION BUTTONS */}
+              <div className="flex flex-col sm:flex-row gap-6 mb-20 z-10 motion-preset-slide-up motion-delay-500 motion-duration-1000">
+                <button 
+                  onClick={() => setIsCreateModalOpen(true)}
+                  className="px-8 py-4 bg-[var(--color-newspaper-ink)] text-[#e2d1b3] text-3xl font-bold sketch-border hover:-translate-y-1 hover:shadow-[6px_6px_0px_var(--color-newspaper-rust)] transition-all flex items-center justify-center gap-2 uppercase tracking-wide group"
+                >
+                  <span className="group-hover:motion-preset-shake">Create a Room</span>
+                </button>
+                <button 
+                  onClick={() => setIsJoinModalOpen(true)}
+                  className="px-8 py-4 bg-transparent border-4 border-dashed border-[var(--color-newspaper-ink)] text-[var(--color-newspaper-ink)] text-3xl font-bold hover:bg-[rgba(43,29,20,0.05)] hover:-translate-y-1 transition-all flex items-center justify-center gap-2 uppercase tracking-wide group"
+                >
+                  <span className="group-hover:motion-preset-pulse">Join with Code</span>
+                </button>
+              </div>
 
-        {/* BOTTOM RIGHT: MYSTERY SECTION */}
-        <section className="newspaper-section mystery-bg retro-reveal-right" style={{ transitionDelay: "0.3s" }}>
-          <div className="section-title-standard">
-            <h3>MYSTERY SECTION</h3>
-          </div>
-          <h4 className="sub-headline">= Secret Content Inside! =</h4>
-          <p className="cursive-subline" style={{ fontSize: "1.8rem", margin: "10px 0" }}>Uncover the Unknown</p>
-          <div className="graphic-placeholder">
-            <Image src="/mystery_magnifying_glass.png" alt="Mystery Magnifying Glass" width={200} height={150} style={{ objectFit: 'contain', mixBlendMode: 'multiply', filter: 'contrast(1.2)' }} />
-          </div>
-          <button className="btn-small-vintage" type="button" style={{ border: "3px solid var(--ink-color)", borderRadius: "8px", padding: "8px 25px", marginTop: "auto" }}>DISCOVER MORE</button>
-        </section>
+              {/* STYLIZED MOCKUP - Newspaper Ad Style */}
+              <div className="w-full max-w-4xl bg-transparent sketch-border-heavy overflow-hidden motion-preset-slide-up motion-delay-700 motion-duration-1000 relative group z-10 p-2 shadow-[10px_10px_0_var(--color-newspaper-ink)] hover:shadow-[15px_15px_0_var(--color-newspaper-rust)] transition-shadow duration-500">
+                 <div className="border-4 border-double border-[var(--color-newspaper-ink)] h-full backdrop-blur-[1px]">
+                   {/* Browser Bar */}
+                   <div className="h-12 border-b-4 border-[var(--color-newspaper-ink)] flex items-center px-4 gap-4 bg-[rgba(43,29,20,0.05)]">
+                      <div className="flex gap-2">
+                        <div className="w-4 h-4 bg-[var(--color-newspaper-ink)] rounded-full border-2 border-[var(--color-newspaper-bg)] group-hover:scale-125 transition-transform"></div>
+                        <div className="w-4 h-4 bg-[var(--color-newspaper-ink)] rounded-full border-2 border-[var(--color-newspaper-bg)] group-hover:scale-125 transition-transform delay-75"></div>
+                        <div className="w-4 h-4 bg-[var(--color-newspaper-ink)] rounded-full border-2 border-[var(--color-newspaper-bg)] group-hover:scale-125 transition-transform delay-150"></div>
+                      </div>
+                      <div className="flex-1 mx-4">
+                        <div className="h-8 border-2 border-[var(--color-newspaper-ink)] w-full max-w-[300px] flex items-center px-3 font-[family-name:var(--font-typewriter)] text-sm font-bold bg-transparent shadow-[inset_2px_2px_0_rgba(0,0,0,0.1)]">
+                          http://watch.party
+                        </div>
+                      </div>
+                   </div>
+                   
+                   {/* App Interface Mockup */}
+                   <div className="flex flex-col md:flex-row h-[300px] md:h-[400px]">
+                      {/* Video Area */}
+                      <div className="flex-1 border-r-4 border-[var(--color-newspaper-ink)] relative flex items-center justify-center p-6 bg-transparent cursor-pointer">
+                        <div className="absolute inset-4 border-2 border-dashed border-[var(--color-newspaper-ink)] flex items-center justify-center group-hover:bg-[rgba(43,29,20,0.05)] transition-colors">
+                           {/* Play Button */}
+                           <div className="w-24 h-24 border-4 border-[var(--color-newspaper-ink)] rounded-full flex items-center justify-center z-10 group-hover:scale-125 transition-transform duration-500 text-5xl bg-transparent shadow-[4px_4px_0_var(--color-newspaper-rust)] group-hover:shadow-[8px_8px_0_var(--color-newspaper-ink)]">
+                              ▶
+                           </div>
+                        </div>
+                      </div>
+                      
+                      {/* Chat/Participants Area */}
+                      <div className="w-full md:w-64 flex flex-col hidden sm:flex bg-transparent relative">
+                         <div className="p-4 border-b-4 border-double border-[var(--color-newspaper-ink)] text-center font-bold uppercase tracking-widest bg-[var(--color-newspaper-ink)] text-[#e2d1b3]">
+                           Online Now
+                         </div>
+                         <div className="flex flex-col p-4 gap-6 flex-1 overflow-hidden group-hover:[&>div]:translate-x-2 [&>div]:transition-transform">
+                           <div className="flex items-center gap-3 delay-100">
+                             <div className="w-12 h-12 border-2 border-[var(--color-newspaper-ink)] rounded-full flex items-center justify-center text-2xl shadow-[2px_2px_0_var(--color-newspaper-ink)] bg-transparent hover:rotate-12 transition-transform">😃</div>
+                             <div className="h-2 border-y border-[var(--color-newspaper-ink)] w-24"></div>
+                           </div>
+                           <div className="flex items-center gap-3 delay-200">
+                             <div className="w-12 h-12 border-2 border-[var(--color-newspaper-ink)] rounded-full flex items-center justify-center text-2xl shadow-[2px_2px_0_var(--color-newspaper-rust)] bg-transparent hover:rotate-12 transition-transform">🎧</div>
+                             <div className="h-2 border-y border-[var(--color-newspaper-ink)] w-20"></div>
+                           </div>
+                           <div className="flex items-center gap-3 delay-300">
+                             <div className="w-12 h-12 border-2 border-[var(--color-newspaper-ink)] rounded-full flex items-center justify-center text-2xl shadow-[2px_2px_0_var(--color-newspaper-ink)] bg-transparent hover:rotate-12 transition-transform">😎</div>
+                             <div className="h-2 border-y border-[var(--color-newspaper-ink)] w-28"></div>
+                           </div>
+                         </div>
+                         <div className="absolute bottom-0 left-0 w-full h-16 border-t-4 border-[var(--color-newspaper-ink)] p-3 bg-[rgba(43,29,20,0.05)]">
+                            <div className="w-full h-full border-2 border-[var(--color-newspaper-ink)] bg-transparent shadow-[inset_2px_2px_0_rgba(0,0,0,0.1)] group-hover:bg-[rgba(139,58,32,0.1)] transition-colors text-center font-bold font-[family-name:var(--font-typewriter)] flex items-center justify-center opacity-50">
+                               Message...
+                            </div>
+                         </div>
+                      </div>
+                   </div>
+                 </div>
+              </div>
 
-      </main>
+              {/* Social Proof */}
+              <div className="mt-16 flex flex-col items-center motion-preset-fade motion-delay-1000 motion-duration-1000 reveal">
+                <p className="text-2xl font-bold uppercase tracking-widest mb-2 border-b-2 border-[var(--color-newspaper-ink)] pb-1">Testimonials</p>
+                <div className="flex items-center gap-2 text-3xl mt-4">
+                  <span className="hover:motion-preset-burst">★★★★★</span> <span className="text-xl font-bold ml-4 lowercase font-[family-name:var(--font-typewriter)]">— Loved by 10K+ users</span>
+                </div>
+              </div>
+            </section>
 
-      {/* RUSTY PRODUCT DEMO & ROADMAP SECTION */}
-      <section className="newspaper-container" style={{ paddingTop: 0, minHeight: 'auto', background: 'none', boxShadow: 'none', border: 'none', position: 'relative', zIndex: 1 }}>
-        <div className="rusty-panel retro-reveal-up">
-          <div className="rivet tl"></div>
-          <div className="rivet tr"></div>
-          <div className="rivet bl"></div>
-          <div className="rivet br"></div>
+            <div className="w-full flex items-center my-12 reveal">
+               <div className="flex-1 border-t-4 border-double border-[var(--color-newspaper-ink)]"></div>
+               <div className="px-4 text-3xl hover:rotate-180 transition-transform duration-1000 bg-transparent">✾</div>
+               <div className="flex-1 border-t-4 border-double border-[var(--color-newspaper-ink)]"></div>
+            </div>
+
+            {/* ================= FEATURES SECTION ================= */}
+            <section id="features" className="w-full px-2 py-10 text-center">
+              <h3 className="text-6xl font-bold mb-20 uppercase tracking-tight reveal" style={{ textShadow: "2px 2px 0px var(--color-newspaper-rust)"}}>What is WatchParty?</h3>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
+                
+                {/* Feature 1 */}
+                <div className="flex flex-col items-center text-center group cursor-pointer border-2 border-dashed border-[var(--color-newspaper-ink)] p-6 hover:bg-[rgba(43,29,20,0.03)] transition-colors reveal">
+                  <div className="w-full h-48 border-4 border-[var(--color-newspaper-ink)] bg-[var(--color-newspaper-bg)] mb-8 flex items-center justify-center text-6xl shadow-[6px_6px_0_var(--color-newspaper-ink)] group-hover:-translate-y-2 group-hover:shadow-[10px_10px_0_var(--color-newspaper-rust)] transition-all overflow-hidden p-2">
+                     <img src="/feature_watch.png" alt="Laptop & Couch" className="w-full h-full object-contain mix-blend-multiply group-hover:motion-preset-wobble motion-duration-500 opacity-90" />
+                  </div>
+                  <h4 className="text-3xl font-bold mb-4 uppercase inline-block border-b-2 border-[var(--color-newspaper-ink)]">Watch With Friends</h4>
+                  <p className="text-xl font-bold">Enjoy movies & shows together no matter the distance.</p>
+                </div>
+
+                {/* Feature 2 */}
+                <div className="flex flex-col items-center text-center group cursor-pointer border-2 border-dashed border-[var(--color-newspaper-ink)] p-6 hover:bg-[rgba(43,29,20,0.03)] transition-colors reveal" style={{ transitionDelay: '100ms' }}>
+                  <div className="w-full h-48 border-4 border-[var(--color-newspaper-ink)] bg-[var(--color-newspaper-bg)] mb-8 flex items-center justify-center text-6xl shadow-[6px_6px_0_var(--color-newspaper-ink)] group-hover:-translate-y-2 group-hover:shadow-[10px_10px_0_var(--color-newspaper-rust)] transition-all overflow-hidden p-2">
+                     <img src="/feature_chat.png" alt="Emojis & Speech bubbles" className="w-full h-full object-contain mix-blend-multiply group-hover:motion-preset-oscillate motion-duration-500 opacity-90" />
+                  </div>
+                  <h4 className="text-3xl font-bold mb-4 uppercase inline-block border-b-2 border-[var(--color-newspaper-ink)]">Live Chat & Reactions</h4>
+                  <p className="text-xl font-bold">Chat in real-time, share emojis & react together.</p>
+                </div>
+
+                {/* Feature 3 */}
+                <div className="flex flex-col items-center text-center group cursor-pointer border-2 border-dashed border-[var(--color-newspaper-ink)] p-6 hover:bg-[rgba(43,29,20,0.03)] transition-colors reveal" style={{ transitionDelay: '200ms' }}>
+                  <div className="w-full h-48 border-4 border-[var(--color-newspaper-ink)] bg-[var(--color-newspaper-bg)] mb-8 flex flex-col items-center justify-center shadow-[6px_6px_0_var(--color-newspaper-ink)] group-hover:-translate-y-2 group-hover:shadow-[10px_10px_0_var(--color-newspaper-rust)] transition-all relative overflow-hidden p-2">
+                     <img src="/feature_sync.png" alt="Perfect Sync Playback" className="w-full h-full object-contain mix-blend-multiply group-hover:motion-preset-pulse opacity-90" />
+                  </div>
+                  <h4 className="text-3xl font-bold mb-4 uppercase inline-block border-b-2 border-[var(--color-newspaper-ink)]">Perfect Sync Playback</h4>
+                  <p className="text-xl font-bold">Watch videos in perfect sync with friends easily.</p>
+                </div>
+
+              </div>
+            </section>
+
+            <div className="w-full flex items-center my-12 reveal">
+               <div className="flex-1 border-t-4 border-double border-[var(--color-newspaper-ink)]"></div>
+               <div className="px-4 text-3xl hover:rotate-180 transition-transform duration-1000 bg-transparent">✾</div>
+               <div className="flex-1 border-t-4 border-double border-[var(--color-newspaper-ink)]"></div>
+            </div>
+
+            {/* ================= HOW IT WORKS SECTION ================= */}
+            <section id="how-it-works" className="w-full max-w-5xl mx-auto px-2 py-10 text-center">
+              <h3 className="text-5xl font-bold mb-20 uppercase tracking-widest border-y-4 border-[var(--color-newspaper-ink)] py-4 inline-block reveal">How It Works</h3>
+              
+              <div className="flex flex-col md:flex-row items-center justify-between relative gap-12 md:gap-0">
+                {/* Step 1 */}
+                <div className="flex-1 flex flex-col items-center group cursor-default reveal">
+                  <div className="text-5xl font-black mb-6 font-[family-name:var(--font-typewriter)] text-[var(--color-newspaper-bg)] bg-[var(--color-newspaper-ink)] w-24 h-24 flex items-center justify-center rounded-full border-4 border-[var(--color-newspaper-bg)] outline outline-4 outline-[var(--color-newspaper-ink)] shadow-[4px_4px_0_var(--color-newspaper-rust)] group-hover:shadow-[6px_6px_0_var(--color-newspaper-ink)] group-hover:-translate-y-1 transition-all">
+                    1
+                  </div>
+                  <h4 className="text-3xl font-bold uppercase mb-2">Create</h4>
+                  <p className="text-xl font-bold">Start a room with a click</p>
+                </div>
+
+                {/* Connecting Arrow */}
+                <div className="hidden md:block text-5xl font-black reveal" style={{ transitionDelay: '100ms' }}>➼</div>
+
+                {/* Step 2 */}
+                <div className="flex-1 flex flex-col items-center group cursor-default reveal" style={{ transitionDelay: '200ms' }}>
+                  <div className="text-5xl font-black mb-6 font-[family-name:var(--font-typewriter)] text-[var(--color-newspaper-bg)] bg-[var(--color-newspaper-ink)] w-24 h-24 flex items-center justify-center rounded-full border-4 border-[var(--color-newspaper-bg)] outline outline-4 outline-[var(--color-newspaper-ink)] shadow-[4px_4px_0_var(--color-newspaper-rust)] group-hover:shadow-[6px_6px_0_var(--color-newspaper-ink)] group-hover:-translate-y-1 transition-all">
+                    2
+                  </div>
+                  <h4 className="text-3xl font-bold uppercase mb-2">Invite</h4>
+                  <p className="text-xl font-bold">Share your invite link</p>
+                </div>
+
+                {/* Connecting Arrow */}
+                <div className="hidden md:block text-5xl font-black reveal" style={{ transitionDelay: '300ms' }}>➼</div>
+
+                {/* Step 3 */}
+                <div className="flex-1 flex flex-col items-center group cursor-default reveal" style={{ transitionDelay: '400ms' }}>
+                  <div className="text-5xl font-black mb-6 font-[family-name:var(--font-typewriter)] text-[var(--color-newspaper-bg)] bg-[var(--color-newspaper-ink)] w-24 h-24 flex items-center justify-center rounded-full border-4 border-[var(--color-newspaper-bg)] outline outline-4 outline-[var(--color-newspaper-ink)] shadow-[4px_4px_0_var(--color-newspaper-rust)] group-hover:shadow-[6px_6px_0_var(--color-newspaper-ink)] group-hover:-translate-y-1 transition-all">
+                    3
+                  </div>
+                  <h4 className="text-3xl font-bold uppercase mb-2">Enjoy</h4>
+                  <p className="text-xl font-bold">Watch & have fun!</p>
+                </div>
+              </div>
+            </section>
+
+            <div className="w-full flex items-center my-12 reveal">
+               <div className="flex-1 border-t-4 border-double border-[var(--color-newspaper-ink)]"></div>
+               <div className="px-4 text-3xl hover:rotate-180 transition-transform duration-1000 bg-transparent">✾</div>
+               <div className="flex-1 border-t-4 border-double border-[var(--color-newspaper-ink)]"></div>
+            </div>
+
+            {/* ================= FAQ SECTION ================= */}
+            <section id="faq" className="w-full max-w-5xl mx-auto px-2 py-10">
+              <h3 className="text-6xl font-bold mb-16 text-center uppercase tracking-tight reveal" style={{ textShadow: "2px 2px 0px rgba(0,0,0,0.1)" }}>Classifieds FAQ</h3>
+              
+              <div className="flex flex-col gap-6">
+                 {[
+                   { q: "Is WatchParty free?", a: "Yes! Creating and joining rooms is completely free. No subscription required." },
+                   { q: "How does syncing work?", a: "We use peer-to-peer WebRTC data channels to instantly sync play, pause, and seek commands securely between all users in the room." },
+                   { q: "Can I invite a large group?", a: "Because connections are peer-to-peer, performance depends on the host's internet connection. Typical rooms of 5-10 people work flawlessly." },
+                   { q: "Does it work on mobile?", a: "Yes, WatchParty works perfectly in any modern mobile browser." },
+                 ].map((faq, i) => (
+                   <div key={i} className="border-4 border-[var(--color-newspaper-ink)] bg-[var(--color-newspaper-bg)] shadow-[6px_6px_0_var(--color-newspaper-ink)] hover:-translate-y-1 transition-all overflow-hidden group reveal" style={{ transitionDelay: `${i * 100}ms` }}>
+                     <button 
+                       onClick={() => toggleFaq(i)}
+                       className="w-full text-left px-8 py-6 flex items-center justify-between font-bold group-hover:bg-[rgba(43,29,20,0.05)] transition-colors"
+                     >
+                       <span className="text-2xl uppercase group-hover:text-[var(--color-newspaper-rust)] transition-colors">{faq.q}</span>
+                       <span className="text-4xl leading-none font-black">{openFaq === i ? "−" : "+"}</span>
+                     </button>
+                     {openFaq === i && (
+                       <div className="px-8 pb-6 pt-0 text-xl font-[family-name:var(--font-typewriter)] font-bold motion-preset-slide-down motion-duration-300 border-t-2 border-dashed border-[var(--color-newspaper-ink)] mt-2 mx-8 pt-4">
+                         {faq.a}
+                       </div>
+                     )}
+                   </div>
+                 ))}
+              </div>
+            </section>
+
+          </main>
           
-          <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-            <h2 className="glowing-text" style={{ fontSize: '3rem', margin: 0, letterSpacing: '4px' }}>VIDEO SHARE</h2>
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', color: 'var(--glow-red)', fontFamily: 'Courier Prime, monospace', fontWeight: 'bold' }}>
-              <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: 'var(--glow-red)', boxShadow: '0 0 8px var(--glow-red)' }}></div>
-              REC
-            </div>
-          </div>
+          {/* ================= FOOTER ================= */}
+          <footer className="w-full border-t-4 border-double border-[var(--color-newspaper-ink)] pt-12 mt-20 flex flex-col items-center text-center reveal">
+            
+            <h1 className="text-5xl font-black uppercase tracking-tight mb-8 hover:scale-105 transition-transform cursor-pointer" style={{ textShadow: "2px 2px 0px var(--color-newspaper-rust)"}}>
+              WatchParty
+            </h1>
 
-          <div className="faq-row" style={{ marginBottom: '25px', borderBottom: '2px solid rgba(0,0,0,0.5)', paddingBottom: '20px' }}>
-            <button className="vintage-button-heavy">CREATE ROOM</button>
-            <button className="vintage-button-heavy">SHARE LINK</button>
-            <button className="vintage-button-heavy">WATCH TOGETHER</button>
-          </div>
-
-          {/* Core Demo Screen */}
-          <div className="demo-screen">
-            <h3 className="demo-title glowing-text">RETRO DRIVE-IN</h3>
-            <p className="demo-tagline">Experience the magic of shared viewing.</p>
-            <div style={{ height: '250px', background: 'url(/vintage_megaphone.png) center/cover no-repeat', filter: 'sepia(0.8) hue-rotate(-30deg) saturate(2) brightness(0.6) contrast(1.2)', borderRadius: '4px', border: '2px solid rgba(255,255,255,0.1)', marginBottom: '15px' }}>
-              {/* Fallback image style since we don't have the exact drive in pic */}
+            <div className="flex flex-wrap justify-center gap-6 text-xl font-bold uppercase tracking-widest mb-10">
+              <a href="#" className="hover:text-[var(--color-newspaper-rust)] transition-colors relative group">
+                About
+                <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-[var(--color-newspaper-rust)] transition-all group-hover:w-full"></span>
+              </a>
+              <span>/</span>
+              <a href="#" className="hover:text-[var(--color-newspaper-rust)] transition-colors relative group">
+                Privacy
+                <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-[var(--color-newspaper-rust)] transition-all group-hover:w-full"></span>
+              </a>
+              <span>/</span>
+              <a href="#" className="hover:text-[var(--color-newspaper-rust)] transition-colors relative group">
+                Terms
+                <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-[var(--color-newspaper-rust)] transition-all group-hover:w-full"></span>
+              </a>
+              <span>/</span>
+              <a href="#" className="hover:text-[var(--color-newspaper-rust)] transition-colors relative group">
+                Contact
+                <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-[var(--color-newspaper-rust)] transition-all group-hover:w-full"></span>
+              </a>
             </div>
-            <div className="demo-stats">
-              <span>Host: Unknown</span>
-              <span>Guests: 4/10</span>
-              <span style={{ color: 'var(--glow-orange)' }}>LIVE 00:04:32</span>
-            </div>
-            <div style={{ marginTop: '15px', textAlign: 'left' }}>
-              <h4 style={{ fontFamily: 'Ultra, serif', fontSize: '1.5rem', margin: '0 0 5px 0', color: 'var(--paper-bg-light)' }}>Classic Drive-In Experience!</h4>
-              <p style={{ fontFamily: 'Libre Baskerville, serif', fontStyle: 'italic', margin: 0, color: '#aaa' }}>by VintageFan87 | 284K views | 2 days ago</p>
-            </div>
-          </div>
 
-          <div className="section-divider-metal"></div>
-
-          {/* Roadmap / Recommended Videos Style List */}
-          <h3 className="metallic-header">Upcoming Features</h3>
-          <div className="roadmap-list">
-            <div className="roadmap-item">
-              <div className="roadmap-icon">V2</div>
-              <div className="roadmap-content">
-                <h4>Voice Chat Integration</h4>
-                <p>Talk with your friends while watching, just like the old days.</p>
-              </div>
+            <div className="flex gap-8 text-4xl mb-12">
+              <a href="#" className="hover:text-[var(--color-newspaper-rust)] hover:-translate-y-2 hover:rotate-12 transition-all">✉</a>
+              <a href="#" className="hover:text-[var(--color-newspaper-rust)] hover:-translate-y-2 hover:-rotate-12 transition-all">✆</a>
+              <a href="#" className="hover:text-[var(--color-newspaper-rust)] hover:-translate-y-2 hover:motion-preset-wobble transition-all">✍</a>
             </div>
-            <div className="roadmap-item">
-              <div className="roadmap-icon">HQ</div>
-              <div className="roadmap-content">
-                <h4>High Definition Printing</h4>
-                <p>Support for crystal clear 1080p and 4K video sharing streams.</p>
-              </div>
+            
+            <div className="w-full bg-[var(--color-newspaper-ink)] text-[var(--color-newspaper-bg)] py-2 font-[family-name:var(--font-typewriter)] font-bold text-sm tracking-widest uppercase">
+               Printed locally • Copr. 2026
             </div>
-            <div className="roadmap-item">
-              <div className="roadmap-icon">TV</div>
-              <div className="roadmap-content">
-                <h4>Custom Room Themes</h4>
-                <p>Decorate your viewing parlor with vintage wallpaper and borders.</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="section-divider-metal"></div>
-
-          {/* FAQ Area (Bottom Buttons) */}
-           <h3 className="metallic-header" style={{ textAlign: 'center' }}>Frequently Asked Questions</h3>
-           <div className="faq-row">
-            <button className="vintage-button-heavy">How To Use?</button>
-            <button className="vintage-button-heavy">Is It Free?</button>
-            <button className="vintage-button-heavy">Support</button>
-          </div>
-
+          </footer>
         </div>
-      </section>
+      </div>
 
-      {/* FOOTER: CONTACT US */}
-      <footer className="newspaper-footer retro-reveal-up">
-        <div className="footer-banner">
-          <div className="thin-divider" style={{ borderColor: "var(--paper-bg)" }}></div>
-          <h2 className="footer-headline">CONTACT US TODAY!</h2>
-          <div className="thin-divider" style={{ borderColor: "var(--paper-bg)" }}></div>
-        </div>
-        
-        <div className="footer-columns">
-          <div className="footer-col">
-            <h4>EMAIL US!</h4>
-            <div className="divider-line"></div>
-            <p>info@example.com</p>
-          </div>
-          <div className="footer-col" style={{ borderLeft: "2px solid var(--ink-color)", borderRight: "2px solid var(--ink-color)" }}>
-            <h4>FOLLOW US!</h4>
-            <div className="divider-line"></div>
-            <p>Facebook | Twitter | Instagram</p>
-          </div>
-          <div className="footer-col">
-            <h4>CALL NOW!</h4>
-            <div className="divider-line"></div>
-            <p>(123) 456-7890</p>
+      {/* ================= MODALS ================= */}
+      
+      {/* Create Room Modal */}
+      {isCreateModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-[rgba(43,29,20,0.8)] backdrop-blur-sm motion-preset-fade motion-duration-200">
+          <div className="border-4 border-[var(--color-newspaper-ink)] p-1 w-full max-w-md shadow-[15px_15px_0_var(--color-newspaper-ink)] motion-preset-slide-up-sm motion-duration-300 relative burnt-edges" style={{ backgroundColor: 'rgba(226, 209, 179, 0.88)' }}>
+            <div className="border-2 border-dashed border-[var(--color-newspaper-ink)] p-8">
+              <button onClick={() => setIsCreateModalOpen(false)} className="absolute top-6 right-6 text-4xl font-black hover:text-[var(--color-newspaper-rust)] hover:rotate-90 transition-transform">
+                ✕
+              </button>
+              <h3 className="text-4xl font-black uppercase mb-2 border-b-4 border-double border-[var(--color-newspaper-ink)] pb-2 inline-block">Host Session</h3>
+              <p className="text-xl font-bold mt-4 mb-8 font-[family-name:var(--font-typewriter)]">Create a new lobby and telegraph the link.</p>
+              
+              <form onSubmit={handleCreateRoom} className="space-y-6">
+                <input
+                  type="text"
+                  value={hostName}
+                  onChange={(e) => setHostName(e.target.value)}
+                  placeholder="ENTER ALIAS"
+                  maxLength={20}
+                  required
+                  className="w-full bg-transparent border-b-4 border-[var(--color-newspaper-ink)] px-2 py-3 text-2xl font-bold uppercase placeholder-[rgba(43,29,20,0.4)] focus:outline-none focus:border-[var(--color-newspaper-rust)] transition-colors text-center"
+                />
+                <button
+                  type="submit"
+                  disabled={!hostName || isCreating}
+                  className="w-full bg-[var(--color-newspaper-ink)] text-[var(--color-newspaper-bg)] font-black text-3xl px-4 py-4 uppercase tracking-widest hover:bg-[var(--color-newspaper-rust)] transition-colors disabled:opacity-50 shadow-[6px_6px_0_var(--color-newspaper-burn)] active:translate-y-1 active:shadow-none"
+                >
+                  {isCreating ? "Connecting..." : "Start Party"}
+                </button>
+              </form>
+            </div>
           </div>
         </div>
-      </footer>
+      )}
+
+      {/* Join Room Modal */}
+      {isJoinModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-[rgba(43,29,20,0.8)] backdrop-blur-sm motion-preset-fade motion-duration-200">
+          <div className="border-4 border-[var(--color-newspaper-ink)] p-1 w-full max-w-md shadow-[15px_15px_0_var(--color-newspaper-ink)] motion-preset-slide-up-sm motion-duration-300 relative burnt-edges" style={{ backgroundColor: 'rgba(226, 209, 179, 0.88)' }}>
+            <div className="border-2 border-dashed border-[var(--color-newspaper-ink)] p-8">
+              <button onClick={() => setIsJoinModalOpen(false)} className="absolute top-6 right-6 text-4xl font-black hover:text-[var(--color-newspaper-rust)] hover:rotate-90 transition-transform">
+                ✕
+              </button>
+              <h3 className="text-4xl font-black uppercase mb-2 border-b-4 border-double border-[var(--color-newspaper-ink)] pb-2 inline-block">Join Session</h3>
+              <p className="text-xl font-bold mt-4 mb-8 font-[family-name:var(--font-typewriter)]">Enter a room code to enter the lobby.</p>
+              
+              <form onSubmit={handleJoinRoom} className="space-y-6">
+                <input
+                  type="text"
+                  value={guestName}
+                  onChange={(e) => setGuestName(e.target.value)}
+                  placeholder="ENTER ALIAS"
+                  maxLength={20}
+                  required
+                  className="w-full bg-transparent border-b-4 border-[var(--color-newspaper-ink)] px-2 py-3 text-2xl font-bold uppercase placeholder-[rgba(43,29,20,0.4)] focus:outline-none focus:border-[var(--color-newspaper-rust)] transition-colors text-center"
+                />
+                <input
+                  type="text"
+                  value={roomId}
+                  onChange={(e) => setRoomId(e.target.value)}
+                  placeholder="ENTER CODE"
+                  maxLength={10}
+                  required
+                  className="w-full bg-transparent border-b-4 border-[var(--color-newspaper-ink)] px-2 py-3 text-2xl font-bold uppercase placeholder-[rgba(43,29,20,0.4)] focus:outline-none focus:border-[var(--color-newspaper-rust)] transition-colors text-center"
+                />
+                {joinError && (
+                  <p className="text-[var(--color-newspaper-rust)] text-xl font-black motion-preset-shake text-center border-2 border-[var(--color-newspaper-rust)] py-2 bg-[rgba(139,58,32,0.1)]">{joinError}</p>
+                )}
+                <button
+                  type="submit"
+                  disabled={!roomId || !guestName || isJoining}
+                  className="w-full bg-[var(--color-newspaper-bg)] text-[var(--color-newspaper-ink)] border-4 border-[var(--color-newspaper-ink)] font-black text-3xl px-4 py-4 uppercase tracking-widest hover:bg-[var(--color-newspaper-ink)] hover:text-[var(--color-newspaper-bg)] transition-colors disabled:opacity-50 shadow-[6px_6px_0_var(--color-newspaper-ink)] active:translate-y-1 active:shadow-none"
+                >
+                  {isJoining ? "Connecting..." : "Join Party"}
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
-    </>
   );
 }
-
